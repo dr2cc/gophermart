@@ -9,28 +9,24 @@ import (
 )
 
 type Config struct {
-	Env           string `yaml:"env" env-default:"local"`
-	ServerAddress string `json:"server_address"`
-	BaseURL       string `json:"base_url"`
-	FilePath      string `json:"file_storage_path"`
-	DatabaseDSN   string `json:"database_dsn"`
-	ConfigPath    string
+	Env            string `yaml:"env" env-default:"local"`
+	ServerAddress  string `json:"server_address"`
+	AccuralAddress string `json:"base_url"`
+	DatabaseDSN    string `json:"database_dsn"`
+	ConfigPath     string
 }
 
 func NewConfig() (*Config, error) {
 	cfg := &Config{
-		Env:           "local", // Окружение - local, dev или prod,в первую очередь для логгера
-		ServerAddress: "",
-		BaseURL:       "",
-		FilePath:      "",
-		DatabaseDSN:   "",
-		ConfigPath:    "",
+		Env:            "local", // Окружение - local, dev или prod,в первую очередь для логгера
+		ServerAddress:  "",
+		AccuralAddress: "",
+		DatabaseDSN:    "",
+		ConfigPath:     "",
 	}
 
 	flag.StringVar(&cfg.ServerAddress, "a", "", "host to listen on")
-	flag.StringVar(&cfg.BaseURL, "b", "", "resulting shortened URL")
-
-	flag.StringVar(&cfg.FilePath, "f", "", "file storage path")
+	flag.StringVar(&cfg.AccuralAddress, "r", "", "Accrual is listening on")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn for connecting to postgres")
 	flag.StringVar(&cfg.ConfigPath, "c", "", "config path")
 
@@ -43,10 +39,9 @@ func NewConfig() (*Config, error) {
 
 	// Считываем конфигурацию в такой последовательности:
 	// - из флагов командной строки, - переменных окружения, - файла конфигурации, - значение по умолчанию
-	cfg.ServerAddress = priorityLine(cfg.ServerAddress, os.Getenv("SERVER_ADDRESS"), configFromFile.ServerAddress, ":8080")
-	cfg.BaseURL = priorityLine(cfg.BaseURL, os.Getenv("BASE_URL"), configFromFile.BaseURL, "http://localhost:8080")
-	cfg.FilePath = priorityLine(cfg.FilePath, os.Getenv("FILE_STORAGE_PATH"), configFromFile.FilePath)
-	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_DSN"), configFromFile.DatabaseDSN)
+	cfg.ServerAddress = priorityLine(cfg.ServerAddress, os.Getenv("RUN_ADDRESS"), configFromFile.ServerAddress, ":8080")
+	cfg.AccuralAddress = priorityLine(cfg.AccuralAddress, os.Getenv("ACCRUAL_SYSTEM_ADDRESS"), configFromFile.AccuralAddress, "localhost:8082")
+	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_URL"), configFromFile.DatabaseDSN)
 
 	return cfg, nil
 }

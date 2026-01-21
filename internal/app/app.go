@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -34,6 +35,7 @@ func Run(cfg *config.Config) error {
 	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
 	if err != nil {
 		log.Error("failed to connect to db", "err", err)
+		// До горутины. Сразу завершаем работу.
 		os.Exit(1)
 	}
 	defer db.Close()

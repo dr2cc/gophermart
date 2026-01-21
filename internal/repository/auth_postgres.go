@@ -7,6 +7,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+const usersTable = "users"
+
 type AuthPostgres struct {
 	db *sqlx.DB
 }
