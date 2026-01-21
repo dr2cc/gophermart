@@ -16,6 +16,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -28,8 +30,17 @@ func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("init server", slog.String("address", cfg.ServerAddress))
 
-	repository := repository.NewRepository(cfg)
-	services := service.NewService(repository, cfg)
+	//
+	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+	if err != nil {
+		log.Error("failed to connect to db", "err", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	//
+
+	repository := repository.NewRepository(db)
+	services := service.NewService(repository)
 	handlers := handler.NewHandler(services)
 
 	srv := new(server.Server)
@@ -39,7 +50,7 @@ func Run(cfg *config.Config) error {
 	go func() {
 		log.Info("ShortenerApp is starting", slog.String("addr", cfg.ServerAddress))
 
-		if err := srv.Run(cfg.ServerAddress, handlers.InitRoutes(log)); err != nil {
+		if err := srv.Run(cfg.ServerAddress, handlers.InitRoutes()); err != nil {
 
 			if !errors.Is(err, http.ErrServerClosed) {
 				serverErrors <- fmt.Errorf("server listener crashed: %w", err)

@@ -4,9 +4,9 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"gophermart"
 	"gophermart/internal/repository"
 	"time"
-	"todo-app1"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -33,7 +33,7 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user todo.User) (int, error) {
+func (s *AuthService) CreateUser(user gophermart.User) (int, error) {
 	user.Password = generatePasswordHash(user.Password)
 	return s.repo.CreateUser(user)
 }

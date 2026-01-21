@@ -8,57 +8,45 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// ❗ Структура Handler (слой обработчиков) имеет в качестве методов
+// Handler
+// - В качестве методов будет иметь
 // все эндпойнты и инициализатор роутера.
-// А в качестве зависимости Handler имеет
-// указатель на структуру сервисов!
-// Так обработчики передают свои запросы на уровень ниже-
-// в слой сервисов❗
+// - В качестве зависимости Handler имеет
+// указатель на структуру сервисов.
 type Handler struct {
 	services *service.Service
 }
 
-// Вызываается из main
+// Called from Run
 func NewHandler(services *service.Service) *Handler {
 	return &Handler{services: services}
 }
 
-// Вызываается из main
+// Called from Run
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	auth := router.Group("/auth")
-	{
-		auth.POST("/sign-up", h.signUp)
-		auth.POST("/sign-in", h.signIn)
-	}
+	// api := router.Group("/api")
+	// {
+	// 	user := api.Group("/user")
+	// 	{
+	// 		user.POST("/register", h.signUp)
+	// 		user.POST("/login", h.signIn)
 
-	api := router.Group("/api", h.userIdentity)
-	{
-		lists := api.Group("/lists")
-		{
-			lists.POST("/", h.createList)
-			lists.GET("/", h.getAllLists)
-			lists.GET("/:id", h.getListById)
-			lists.PUT("/:id", h.updateList)
-			lists.DELETE("/:id", h.deleteList)
+	// 		user.POST("/orders", h.createOrder)
+	// 		user.GET("/orders", h.readOrders)
 
-			items := lists.Group(":id/items")
-			{
-				items.POST("/", h.createItem)
-				items.GET("/", h.getAllItems)
-			}
-		}
+	// 		user.GET("/withdrawals", h.createWithdrawals)
 
-		items := api.Group("items")
-		{
-			items.GET("/:id", h.getItemById)
-			items.PUT("/:id", h.updateItem)
-			items.DELETE("/:id", h.deleteItem)
-		}
-	}
+	// 		balance := user.Group("/balance")
+	// 		{
+	// 			balance.GET("/", h.readBalance)
+	// 			balance.POST("/withdraw", h.createWithdraw)
+	// 		}
+	// 	}
+	// }
 
 	return router
 }

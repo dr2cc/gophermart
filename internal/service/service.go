@@ -1,8 +1,8 @@
 package service
 
 import (
+	"gophermart"
 	"gophermart/internal/repository"
-	"todo-app1"
 )
 
 //go:generate mockgen -source=service.go -destination=mocks/mock.go
@@ -11,31 +11,19 @@ import (
 type Authorization interface {
 	// Функцонал:
 	// Регистрация пользователей
-	CreateUser(user todo.User) (int, error)
+	CreateUser(user gophermart.User) (int, error)
 	// Генерация jwt токенов
 	GenerateToken(username, password string) (string, error)
 	// Валидация jwt токенов
 	ParseToken(token string) (int, error)
 }
 
-// Сервис работы со списками задач
-type TodoList interface {
-	// Функцонал:
-	Create(userId int, list todo.TodoList) (int, error)
-	GetAll(userId int) ([]todo.TodoList, error)
-	GetById(userId, listId int) (todo.TodoList, error)
-	Delete(userId, listId int) error
-	Update(userId, listId int, input todo.UpdateListInput) error
+// Сервис работы с заказами
+type Orders interface {
 }
 
-// Сервис работы с задачами
-type TodoItem interface {
-	// Функцонал:
-	Create(userId, listId int, item todo.TodoItem) (int, error)
-	GetAll(userId, listId int) ([]todo.TodoItem, error)
-	GetById(userId, itemId int) (todo.TodoItem, error)
-	Delete(userId, itemId int) error
-	Update(userId, itemId int, input todo.UpdateItemInput) error
+// Сервис лояльности
+type Loyalty interface {
 }
 
 // Здесь определены предметные области (доменные зоны).
@@ -44,17 +32,17 @@ type TodoItem interface {
 type Service struct {
 	// Сервис аутентификации, со своим функционалом.
 	Authorization
-	// Сервис работы со списками задач, со своим функционалом.
-	TodoList
-	// Сервис работы с задачами, со своим функционалом.
-	TodoItem
+	// Сервис работы с заказами, со своим функционалом.
+	Orders
+	// Сервис лояльности, со своим функционалом.
+	Loyalty
 }
 
 // Вызываается из main
 func NewService(repos *repository.Repository) *Service {
 	return &Service{
 		Authorization: NewAuthService(repos.Authorization),
-		TodoList:      NewTodoListService(repos.TodoList),
-		TodoItem:      NewTodoItemService(repos.TodoItem, repos.TodoList),
+		// Orders: ,
+		// LoLoyalty: ,
 	}
 }
