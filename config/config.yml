@@ -1,5 +1,5 @@
 env: "local" # Окружение - local, dev или prod,в первую очередь для логгера
-databaseDSN: "postgres://postgres:qwerty@localhost:5434/postgres?sslmode=disable"
+databaseDSN: "postgres://postgres:qwerty@localhost:5432/postgres?sslmode=disable"
 ServerAddress: "localhost:8080"
 
 # type Config struct {

@@ -41,7 +41,7 @@ func NewConfig() (*Config, error) {
 	// - из флагов командной строки, - переменных окружения, - файла конфигурации, - значение по умолчанию
 	cfg.ServerAddress = priorityLine(cfg.ServerAddress, os.Getenv("RUN_ADDRESS"), configFromFile.ServerAddress, ":8080")
 	cfg.AccuralAddress = priorityLine(cfg.AccuralAddress, os.Getenv("ACCRUAL_SYSTEM_ADDRESS"), configFromFile.AccuralAddress, "localhost:8082")
-	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_URL"), configFromFile.DatabaseDSN)
+	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_URI"), configFromFile.DatabaseDSN)
 
 	return cfg, nil
 }
