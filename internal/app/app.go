@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gophermart/internal/accrual"
+	"gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
 	"gophermart/internal/handler"
 	"gophermart/internal/repository"
@@ -31,7 +33,6 @@ func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("init server", slog.String("address", cfg.ServerAddress))
 
-	//
 	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
 	if err != nil {
 		log.Error("failed to connect to db", "err", err)
@@ -45,41 +46,47 @@ func Run(cfg *config.Config) error {
 	services := service.NewService(repository)
 	handlers := handler.NewHandler(services)
 
+	// 1. Создаем корневой контекст, который отменится при сигналах завершения
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	// 2. Инициализируем клиент и запускаем фоновый процессор
+	accrualClient := accrual.NewClient(cfg.AccrualAddress)
+	// Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
+	processor.Run(ctx, repository, accrualClient)
+
+	// 3. Настройка сервера
 	srv := new(server.Server)
-
 	serverErrors := make(chan error, 1)
-	// Сервер запускается в отдельной горутине (ListenAndServe() является блокирующим вызовом).
+
 	go func() {
-		log.Info("ShortenerApp is starting", slog.String("addr", cfg.ServerAddress))
-
+		log.Info("App is starting", slog.String("addr", cfg.ServerAddress))
+		// Инициализируем роуты
 		if err := srv.Run(cfg.ServerAddress, handlers.InitRoutes()); err != nil {
-
 			if !errors.Is(err, http.ErrServerClosed) {
 				serverErrors <- fmt.Errorf("server listener crashed: %w", err)
 			}
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-
+	// 4. Ожидание завершения
 	select {
 	case err := <-serverErrors:
-		return err
+		return err // Если сервер сам упал
 
-	case sig := <-quit:
-		log.Info("ShortenerApp is shutting down", slog.String("signal", sig.String()))
+	case <-ctx.Done(): // Сработает при SIGTERM/SIGINT
+		log.Info("Shutting down gracefully", slog.String("signal", "interrupt"))
 
-		signal.Stop(quit)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// Даем 5 секунд на то, чтобы сервер и воркеры завершили текущие дела
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := srv.Shutdown(ctx); err != nil {
+		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to shutdown http server: %w", err)
 		}
 	}
 
+	log.Info("App exited cleanly")
 	return nil
 }
 

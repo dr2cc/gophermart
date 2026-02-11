@@ -11,7 +11,7 @@ import (
 type Config struct {
 	Env            string `yaml:"env" env-default:"local"`
 	ServerAddress  string `json:"server_address"`
-	AccuralAddress string `json:"base_url"`
+	AccrualAddress string `json:"base_url"`
 	DatabaseDSN    string `json:"database_dsn"`
 	ConfigPath     string
 }
@@ -20,13 +20,13 @@ func NewConfig() (*Config, error) {
 	cfg := &Config{
 		Env:            "local", // Окружение - local, dev или prod,в первую очередь для логгера
 		ServerAddress:  "",
-		AccuralAddress: "",
+		AccrualAddress: "",
 		DatabaseDSN:    "",
 		ConfigPath:     "",
 	}
 
 	flag.StringVar(&cfg.ServerAddress, "a", "", "host to listen on")
-	flag.StringVar(&cfg.AccuralAddress, "r", "", "Accrual is listening on")
+	flag.StringVar(&cfg.AccrualAddress, "r", "", "Accrual is listening on")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn for connecting to postgres")
 	flag.StringVar(&cfg.ConfigPath, "c", "", "config path")
 
@@ -40,7 +40,7 @@ func NewConfig() (*Config, error) {
 	// Считываем конфигурацию в такой последовательности:
 	// - из флагов командной строки, - переменных окружения, - файла конфигурации, - значение по умолчанию
 	cfg.ServerAddress = priorityLine(cfg.ServerAddress, os.Getenv("RUN_ADDRESS"), configFromFile.ServerAddress, ":8080")
-	cfg.AccuralAddress = priorityLine(cfg.AccuralAddress, os.Getenv("ACCRUAL_SYSTEM_ADDRESS"), configFromFile.AccuralAddress, "localhost:8082")
+	cfg.AccrualAddress = priorityLine(cfg.AccrualAddress, os.Getenv("ACCRUAL_SYSTEM_ADDRESS"), configFromFile.AccrualAddress, "localhost:8082")
 	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_URI"), configFromFile.DatabaseDSN)
 
 	return cfg, nil
