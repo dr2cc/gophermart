@@ -28,14 +28,6 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// ❌Для теста, эта группа и эндпойнты не из задания!
-	auth := router.Group("/auth")
-	{
-		auth.POST("/sign-up", h.signUp)
-		auth.POST("/sign-in", h.signIn)
-	}
-	// ❌
-
 	api := router.Group("/api")
 	{
 		user := api.Group("/user")

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gophermart/internal/accrual"
+	"gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
 	"gophermart/internal/handler"
 	"gophermart/internal/repository"
@@ -48,10 +50,10 @@ func Run(cfg *config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// // Инициализируем клиент accrual и запускаем фоновый процессор
-	// accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	// // Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
-	// processor.Run(ctx, repository, accrualClient)
+	// Инициализируем клиент accrual и запускаем фоновый процессор
+	accrualClient := accrual.NewClient(cfg.AccrualAddress)
+	// Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
+	processor.Run(ctx, repository.OrderStore, accrualClient)
 
 	// 3. Настройка сервера
 	srv := new(server.Server)

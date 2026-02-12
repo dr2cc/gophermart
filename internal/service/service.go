@@ -1,6 +1,7 @@
 package service
 
 import (
+	"gophermart/internal/accrual/dto"
 	"gophermart/internal/models"
 	"gophermart/internal/repository"
 )
@@ -20,10 +21,14 @@ type Authorization interface {
 
 // Сервис работы с заказами
 type Orders interface {
+	// Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
+	ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
 }
 
 // Сервис лояльности
 type Loyalty interface {
+	// Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
+	ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
 }
 
 // Здесь определены предметные области (доменные зоны).

@@ -1,10 +1,12 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"gophermart/internal/models"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 const usersTable = "users"
@@ -20,10 +22,16 @@ func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
 func (r *AuthPostgres) CreateUser(user models.User) (int, error) {
 	var id int
 	query := fmt.Sprintf("INSERT INTO %s (login, hash) values ($1, $2) RETURNING id", usersTable)
-	// query := fmt.Sprintf("INSERT INTO %s (name, username, password_hash) values ($1, $2, $3) RETURNING id", usersTable)
 
-	row := r.db.QueryRow(query, user.Login, user.Password) //❌(query, user.Name, user.Username, user.Password)
+	row := r.db.QueryRow(query, user.Login, user.Password)
 	if err := row.Scan(&id); err != nil {
+		// Проверяем, является ли ошибка нарушением уникальности
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" { // 23505 — код unique_violation
+				return 0, ErrUserAlreadyExists
+			}
+		}
 		return 0, err
 	}
 

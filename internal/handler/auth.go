@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"gophermart/internal/models"
+	"gophermart/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -37,9 +39,15 @@ func (h *Handler) signUp(c *gin.Context) {
 	// 3️⃣ // Пытаемся создать пользователя, отдаем структуру input сервису
 	id, err := h.services.Authorization.CreateUser(input)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, repository.ErrUserAlreadyExists) {
+			newErrorResponse(c, http.StatusConflict, "The login is already taken") //409
+			return
+		}
+		newErrorResponse(c, http.StatusInternalServerError, err.Error()) // 500
 		return
 	}
+
+	// TODO: обработать ошибку `400` — неверный формат запроса;
 
 	// 4️⃣ Возвращаем клиенту response
 	c.JSON(http.StatusOK, map[string]interface{}{
