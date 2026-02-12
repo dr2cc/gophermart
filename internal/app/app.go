@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gophermart/internal/accrual"
-	"gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
 	"gophermart/internal/handler"
 	"gophermart/internal/repository"
@@ -31,7 +29,7 @@ const (
 
 func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
-	log.Info("init server", slog.String("address", cfg.ServerAddress))
+	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
 	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
 	if err != nil {
@@ -46,21 +44,21 @@ func Run(cfg *config.Config) error {
 	services := service.NewService(repository)
 	handlers := handler.NewHandler(services)
 
-	// 1. Создаем корневой контекст, который отменится при сигналах завершения
+	// Создаем корневой контекст, который отменится при сигналах завершения
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// 2. Инициализируем клиент и запускаем фоновый процессор
-	accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	// Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
-	processor.Run(ctx, repository, accrualClient)
+	// // Инициализируем клиент accrual и запускаем фоновый процессор
+	// accrualClient := accrual.NewClient(cfg.AccrualAddress)
+	// // Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
+	// processor.Run(ctx, repository, accrualClient)
 
 	// 3. Настройка сервера
 	srv := new(server.Server)
 	serverErrors := make(chan error, 1)
 
 	go func() {
-		log.Info("App is starting", slog.String("addr", cfg.ServerAddress))
+		log.Info("App is starting")
 		// Инициализируем роуты
 		if err := srv.Run(cfg.ServerAddress, handlers.InitRoutes()); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {

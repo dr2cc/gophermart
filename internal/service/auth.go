@@ -4,7 +4,8 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"gophermart"
+
+	"gophermart/internal/models"
 	"gophermart/internal/repository"
 	"time"
 
@@ -33,13 +34,13 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user gophermart.User) (int, error) {
+func (s *AuthService) CreateUser(user models.User) (int, error) {
 	user.Password = generatePasswordHash(user.Password)
 	return s.repo.CreateUser(user)
 }
 
-func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUser(username, generatePasswordHash(password))
+func (s *AuthService) GenerateToken(login, password string) (string, error) {
+	user, err := s.repo.GetUser(login, generatePasswordHash(password))
 	if err != nil {
 		return "", err
 	}
@@ -50,7 +51,7 @@ func (s *AuthService) GenerateToken(username, password string) (string, error) {
 			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
-		user.Id,
+		user.ID,
 	})
 
 	return token.SignedString([]byte(signingKey))

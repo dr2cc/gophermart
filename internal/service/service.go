@@ -1,7 +1,7 @@
 package service
 
 import (
-	"gophermart"
+	"gophermart/internal/models"
 	"gophermart/internal/repository"
 )
 
@@ -11,9 +11,9 @@ import (
 type Authorization interface {
 	// Функцонал:
 	// Регистрация пользователей
-	CreateUser(user gophermart.User) (int, error)
+	CreateUser(user models.User) (int, error)
 	// Генерация jwt токенов
-	GenerateToken(username, password string) (string, error)
+	GenerateToken(login, password string) (string, error)
 	// Валидация jwt токенов
 	ParseToken(token string) (int, error)
 }

@@ -2,14 +2,14 @@ package repository
 
 import (
 	"context"
-	"gophermart"
+	"gophermart/internal/models"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type Authorization interface {
-	CreateUser(user gophermart.User) (int, error)
-	GetUser(username, password string) (gophermart.User, error)
+	CreateUser(user models.User) (int, error)
+	GetUser(login, password string) (models.User, error)
 }
 
 // Интерфейс для взаимодействия БД c accrual

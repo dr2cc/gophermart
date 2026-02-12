@@ -9,6 +9,10 @@ import (
 )
 
 // Интерфейс для взаимодействия с БД (реализуйте его в своем storage)
+// ❗ В Go существует правило: принимай интерфейсы, возвращай структуры.
+// В processor.go: Интерфейс OrderStore должен быть объявлен здесь. Это говорит о том, что
+// ❗ пакету processor для работы нужно «что-то», что умеет давать заказы и обновлять их.
+// Ему всё равно, как именно это делает любая база данных.
 type OrderStore interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
 	UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error

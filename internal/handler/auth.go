@@ -1,11 +1,17 @@
 package handler
 
 import (
-	"gophermart"
+	"gophermart/internal/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Логика работы слоя http обработчиков (соответственно и каждого обработчика):
+// 1️⃣ Принимаем данные от клиента (обычно в формате json).
+// 2️⃣ Мапим (преобразуем в конкретную объектную модель, структуру) принятые данные по нашей внутренней структуре.
+// 3️⃣ Передаем данные в службу нашего приложения.
+// 4️⃣ Возвращаем клиенту response.
 
 // @Summary SignUp
 // @Tags auth
@@ -20,26 +26,29 @@ import (
 // @Failure default {object} errorResponse
 // @Router /auth/sign-up [post]
 func (h *Handler) signUp(c *gin.Context) {
-	var input gophermart.User
+	var input models.User
 
+	// 1️⃣ Принимаем данные из сети, 2️⃣ десериализуем и заполняем (, &input) models
 	if err := c.BindJSON(&input); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, "invalid input body")
 		return
 	}
 
+	// 3️⃣ // Пытаемся создать пользователя, отдаем структуру input сервису
 	id, err := h.services.Authorization.CreateUser(input)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	// 4️⃣ Возвращаем клиенту response
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"id": id,
 	})
 }
 
 type signInInput struct {
-	Username string `json:"username" binding:"required"`
+	Login    string `json:"login" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -58,17 +67,20 @@ type signInInput struct {
 func (h *Handler) signIn(c *gin.Context) {
 	var input signInInput
 
+	// 1️⃣ Принимаем данные из сети, 2️⃣ десериализуем и заполняем (, &input) models
 	if err := c.BindJSON(&input); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.services.Authorization.GenerateToken(input.Username, input.Password)
+	// 3️⃣ // Пытаемся создать token, отдаем структуру input сервису
+	token, err := h.services.Authorization.GenerateToken(input.Login, input.Password)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	// 4️⃣ Возвращаем клиенту response
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"token": token,
 	})
