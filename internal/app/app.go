@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gophermart/db/dbgen"
+	"gophermart/db/migrations" // импорт вашего пакета с FS
 	"gophermart/internal/accrual"
 	"gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
@@ -21,6 +23,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -40,6 +43,35 @@ func Run(cfg *config.Config) error {
 		os.Exit(1)
 	}
 	defer db.Close()
+	//
+	// 2. Запуск миграций Goose перед стартом логики
+	// Передаем стандартный *sql.DB через db.DB
+	goose.SetBaseFS(migrations.FS)
+	if err := goose.SetDialect("postgres"); err != nil {
+		os.Exit(1)
+	}
+
+	if err := goose.Up(db.DB, "."); err != nil {
+		// Логируем ошибку миграции
+		os.Exit(1)
+	}
+
+	// 3. Инициализация sqlc (dbgen)
+	// sqlx.DB отлично подходит, так как реализует интерфейс DBTX
+	store := dbgen.New(db)
+
+	// 4. Пример использования типизированного метода
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user, err := store.GetUserByLogin(ctx, "admin")
+	if err != nil {
+		// Если пользователь не найден, sqlc вернет sql.ErrNoRows
+	}
+
+	// Теперь у вас есть доступ к полям через точку с правильными типами
+	println("User ID:", user.ID)
+	println("User Login:", user.Login)
 	//
 
 	repository := repository.NewRepository(db)

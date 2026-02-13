@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - schema: "db/migrations" # sqlc смотрит в папку с миграциями Goose
+    queries: "db/queries"    # здесь мы будем писать запросы
+    engine: "postgresql"
+    gen:
+      go:
+        package: "dbgen"      # название пакета, который сгенерируется
+        out: "db/dbgen"       # куда положить код
+        emit_interface: true # Удобно для моков в тестах
+        emit_json_tags: true
+        sql_package: "database/sql" # Для совместимости с sqlx

@@ -12,6 +12,12 @@ require (
 )
 
 require (
+	github.com/mfridman/interpolate v0.0.2 // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+)
+
+require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -38,6 +44,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/swaggo/swag v1.8.12 // indirect
