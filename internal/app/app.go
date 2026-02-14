@@ -4,6 +4,7 @@ package app
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"gophermart/db/dbgen"
 	"gophermart/db/migrations" // импорт вашего пакета с FS
@@ -36,31 +37,53 @@ func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
+	// 1. Добавляем флаг (нужно импортировать пакет "flag")
+	dropDB := flag.Bool("drop", false, "снести все таблицы перед стартом")
+	flag.Parse()
+
+	// 2. Коннект
 	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
 	if err != nil {
+		// это примерный аналог log.Fatal(err) для slog
 		log.Error("failed to connect to db", "err", err)
-		// До горутины. Сразу завершаем работу.
 		os.Exit(1)
 	}
 	defer db.Close()
-	//
-	// 2. Запуск миграций Goose перед стартом логики
+
+	// 3. Запуск миграций Goose перед стартом логики (проверка наличия таблиц и их создание)
 	// Передаем стандартный *sql.DB через db.DB
-	goose.SetBaseFS(migrations.FS)
+	goose.SetBaseFS(migrations.FS) // migrations.FS — переменная с go:embed
 	if err := goose.SetDialect("postgres"); err != nil {
+		log.Error("Goose error", "err", err)
 		os.Exit(1)
 	}
+	log.Info("Applying migrations...")
 
+	// 4. МАГИЯ: Если запустили с флагом -drop
+	if *dropDB {
+		log.Info("Cleaning up the database...")
+		// Ресет выполнит все Down блоки из твоей FS
+		if err := goose.Reset(db.DB, "."); err != nil {
+			log.Error("Goose reset error", "err", err)
+			os.Exit(1)
+		}
+		log.Info("Database is clean!")
+	}
+
+	// 5. Обычный запуск миграций (накатка)
 	if err := goose.Up(db.DB, "."); err != nil {
 		// Логируем ошибку миграции
+		log.Error("Migration failed:", "err", err)
 		os.Exit(1)
 	}
 
-	// 3. Инициализация sqlc (dbgen)
+	log.Info("Database is up to date!")
+
+	// 6. Инициализация sqlc (dbgen)
 	// sqlx.DB отлично подходит, так как реализует интерфейс DBTX
 	store := dbgen.New(db)
 
-	// 4. Пример использования типизированного метода
+	// 7. Пример использования типизированного метода
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -85,9 +108,9 @@ func Run(cfg *config.Config) error {
 	// Инициализируем клиент accrual и запускаем фоновый процессор
 	accrualClient := accrual.NewClient(cfg.AccrualAddress)
 	// Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
-	processor.Run(ctx, repository.OrderStore, accrualClient)
+	processor.Run(ctx, repository.OrderStore, accrualClient, log)
 
-	// 3. Настройка сервера
+	// Настройка сервера
 	srv := new(server.Server)
 	serverErrors := make(chan error, 1)
 
@@ -101,7 +124,7 @@ func Run(cfg *config.Config) error {
 		}
 	}()
 
-	// 4. Ожидание завершения
+	// Ожидание завершения
 	select {
 	case err := <-serverErrors:
 		return err // Если сервер сам упал

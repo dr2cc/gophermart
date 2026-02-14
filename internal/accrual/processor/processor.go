@@ -4,7 +4,7 @@ import (
 	"context"
 	"gophermart/internal/accrual"
 	"gophermart/internal/accrual/dto"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -18,7 +18,7 @@ type OrderStore interface {
 	UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
 }
 
-func Run(ctx context.Context, store OrderStore, client *accrual.Client) {
+func Run(ctx context.Context, store OrderStore, client *accrual.Client, log *slog.Logger) {
 	go func() {
 		ticker := time.NewTicker(2 * time.Second) // Интервал проверки БД
 		defer ticker.Stop()
@@ -26,20 +26,27 @@ func Run(ctx context.Context, store OrderStore, client *accrual.Client) {
 		for {
 			select {
 			case <-ctx.Done():
-				// TODO: логируем выход, чтобы в консоли было видно завершение
+				log.Info("Shutting down PROCESSOR")
 				return
 			case <-ticker.C:
-				processOrders(ctx, store, client)
+				processOrders(ctx, store, client, log)
 			}
 		}
 	}()
 }
 
-func processOrders(ctx context.Context, store OrderStore, client *accrual.Client) {
+func processOrders(ctx context.Context, store OrderStore, client *accrual.Client, log *slog.Logger) {
+	const op = "processor.processOrders"
+
+	log = log.With(
+		slog.String("op", op),
+	)
+
 	// 1. Берем заказы, которые еще не завершены (NEW, PROCESSING)
 	orders, err := store.GetUnprocessedOrders(ctx)
 	if err != nil {
-		log.Printf("failed to fetch orders: %v", err)
+		// log.Printf("failed to fetch orders: %v", err)
+		log.Error("failed to fetch orders:", "err", err)
 		return
 	}
 
@@ -48,15 +55,18 @@ func processOrders(ctx context.Context, store OrderStore, client *accrual.Client
 
 		if err != nil {
 			if err == dto.ErrTooManyRequests {
-				log.Printf("Rate limit hit, sleeping for %v", retryAfter)
+				//log.Printf("Rate limit hit, sleeping for %v", retryAfter)
+				slog.Info("rate limit hit", "retry_after", retryAfter)
 				time.Sleep(retryAfter)
 				return // Выходим из цикла обработки текущей пачки, чтобы подождать
 			}
 			if err == dto.ErrOrderNotRegistered {
-				log.Printf("Order %s not registered in accrual system", orderNum)
+				//log.Printf("Order %s not registered in accrual system", orderNum)
+				slog.Info("order not registered in accrual system", "order_id", orderNum)
 				continue
 			}
-			log.Printf("Error fetching accrual for %s: %v", orderNum, err)
+			//log.Printf("Error fetching accrual for %s: %v", orderNum, err)
+			slog.Error("error fetching accrual", "order", orderNum, "err", err)
 			continue
 		}
 
@@ -65,7 +75,8 @@ func processOrders(ctx context.Context, store OrderStore, client *accrual.Client
 		if resp.Status == "PROCESSED" || resp.Status == "INVALID" {
 			err := store.UpdateOrderStatus(ctx, resp.Order, resp.Status, resp.Accrual)
 			if err != nil {
-				log.Printf("Failed to update order %s: %v", resp.Order, err)
+				//log.Printf("Failed to update order %s: %v", resp.Order, err)
+				log.Error("failed to update order", "order", resp.Order, "err", err)
 			}
 		}
 	}
