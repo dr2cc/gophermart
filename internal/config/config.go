@@ -14,6 +14,7 @@ type Config struct {
 	AccrualAddress string `json:"base_url"`
 	DatabaseDSN    string `json:"database_dsn"`
 	ConfigPath     string
+	DropDB         bool
 }
 
 func NewConfig() (*Config, error) {
@@ -23,12 +24,14 @@ func NewConfig() (*Config, error) {
 		AccrualAddress: "",
 		DatabaseDSN:    "",
 		ConfigPath:     "",
+		DropDB:         false,
 	}
 
 	flag.StringVar(&cfg.ServerAddress, "a", "", "host to listen on")
-	flag.StringVar(&cfg.AccrualAddress, "r", "", "Accrual is listening on")
+	flag.StringVar(&cfg.AccrualAddress, "r", "", "accrual is listening on")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn for connecting to postgres")
 	flag.StringVar(&cfg.ConfigPath, "c", "", "config path")
+	flag.BoolVar(&cfg.DropDB, "drop", false, "drop db tables")
 
 	flag.Parse()
 

@@ -4,8 +4,38 @@
 
 package dbgen
 
+import (
+	"database/sql"
+	"time"
+)
+
+type Balance struct {
+	UserID  int64          `json:"user_id"`
+	Balance sql.NullString `json:"balance"`
+	Debited sql.NullString `json:"debited"`
+}
+
+type Order struct {
+	Number     string         `json:"number"`
+	UserID     int64          `json:"user_id"`
+	Status     string         `json:"status"`
+	Accrual    sql.NullString `json:"accrual"`
+	UploadedAt time.Time      `json:"uploaded_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	Attempts   sql.NullInt16  `json:"attempts"`
+}
+
 type User struct {
-	ID    int32  `json:"id"`
-	Login string `json:"login"`
-	Hash  string `json:"hash"`
+	ID        int64     `json:"id"`
+	Login     string    `json:"login"`
+	Hash      string    `json:"hash"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Withdrawal struct {
+	ID          int64     `json:"id"`
+	UserID      int64     `json:"user_id"`
+	OrderNum    string    `json:"order_num"`
+	Sum         string    `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
 }

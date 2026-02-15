@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"gophermart/db/dbgen"
 	"gophermart/db/migrations" // импорт вашего пакета с FS
@@ -37,9 +36,9 @@ func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
-	// 1. Добавляем флаг (нужно импортировать пакет "flag")
-	dropDB := flag.Bool("drop", false, "снести все таблицы перед стартом")
-	flag.Parse()
+	// // 1. Добавляем флаг (нужно импортировать пакет "flag")
+	// dropDB := flag.Bool("drop", false, "снести все таблицы перед стартом")
+	// flag.Parse()
 
 	// 2. Коннект
 	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
@@ -60,14 +59,14 @@ func Run(cfg *config.Config) error {
 	log.Info("Applying migrations...")
 
 	// 4. МАГИЯ: Если запустили с флагом -drop
-	if *dropDB {
+	if cfg.DropDB {
 		log.Info("Cleaning up the database...")
-		// Ресет выполнит все Down блоки из твоей FS
+		// Ресет выполнит все Down блоки
 		if err := goose.Reset(db.DB, "."); err != nil {
 			log.Error("Goose reset error", "err", err)
 			os.Exit(1)
 		}
-		log.Info("Database is clean!")
+		log.Info("DB IS CLEAN.")
 	}
 
 	// 5. Обычный запуск миграций (накатка)
