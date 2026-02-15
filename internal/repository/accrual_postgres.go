@@ -15,6 +15,16 @@ func NewAccrualPostgres(db *sqlx.DB) *AccrualPostgres {
 	return &AccrualPostgres{db: db}
 }
 
+// Столбцы (columns) таблицы orders:
+// number , user_id , status , accrual , uploaded_at (TIMESTAMP), updated_at (TIMESTAMP), attempts
+// Столбцы (columns) таблицы users:
+// id , login , hash , created_at (TIMESTAMP)
+
+// Метод GetUnprocessedOrders - «глаза» вашего воркера.
+// Он лезет в БД и ищет заказы, по которым мы еще не получили финальный ответ от системы лояльности.
+// Логика: Выбираем все заказы, у которых статус NEW (только что создан),
+// REGISTERED (принят системой начислений) или PROCESSING (в процессе расчета).
+// Результат: Список строк (номеров заказов), которые воркер должен «прогнать» через HTTP-запрос к accrual.
 func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, error) {
 	var orders []string
 
@@ -29,6 +39,11 @@ func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, e
 	return orders, nil
 }
 
+// Метод UpdateOrderStatus - «руки» вашего воркера. Он записывает результат в базу.
+// Логика: Обновить статус заказа.
+// Важно: Если пришел статус PROCESSED, нужно начислить баллы (accrual) на баланс пользователя.
+// Это должно быть атомарно (в одной транзакции), чтобы не вышло так, что статус заказа изменился,
+// а баллы пользователю «не долетели».
 func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error {
 	// Начинаем транзакцию с контекстом
 	tx, err := r.db.BeginTxx(ctx, nil)
@@ -54,9 +69,11 @@ func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string,
 
 	// 2. Если расчет окончен, начисляем баллы на баланс пользователя
 	if status == "PROCESSED" && val > 0 {
+		// ВАЖНО: используем таблицу balance и прибавляем к колонке balance
 		_, err = tx.ExecContext(ctx,
-			`UPDATE users SET balance = balance + $1 
-			 WHERE id = (SELECT user_id FROM orders WHERE number = $2)`,
+			`UPDATE balance 
+         SET balance = balance + $1 
+         WHERE user_id = (SELECT user_id FROM orders WHERE number = $2)`,
 			val, orderID,
 		)
 		if err != nil {

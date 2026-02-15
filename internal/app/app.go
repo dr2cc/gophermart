@@ -21,7 +21,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
@@ -36,12 +35,9 @@ func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
-	// // 1. Добавляем флаг (нужно импортировать пакет "flag")
-	// dropDB := flag.Bool("drop", false, "снести все таблицы перед стартом")
-	// flag.Parse()
-
-	// 2. Коннект
-	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+	// 1. Коннект
+	// db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+	db, err := repository.NewPostgresDB(cfg.DatabaseDSN)
 	if err != nil {
 		// это примерный аналог log.Fatal(err) для slog
 		log.Error("failed to connect to db", "err", err)
@@ -49,7 +45,7 @@ func Run(cfg *config.Config) error {
 	}
 	defer db.Close()
 
-	// 3. Запуск миграций Goose перед стартом логики (проверка наличия таблиц и их создание)
+	// 2. Запуск миграций Goose перед стартом логики (проверка наличия таблиц и их создание)
 	// Передаем стандартный *sql.DB через db.DB
 	goose.SetBaseFS(migrations.FS) // migrations.FS — переменная с go:embed
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -58,7 +54,7 @@ func Run(cfg *config.Config) error {
 	}
 	log.Info("Applying migrations...")
 
-	// 4. МАГИЯ: Если запустили с флагом -drop
+	// 3. МАГИЯ: Если запустили с флагом -drop
 	if cfg.DropDB {
 		log.Info("Cleaning up the database...")
 		// Ресет выполнит все Down блоки
@@ -69,7 +65,7 @@ func Run(cfg *config.Config) error {
 		log.Info("DB IS CLEAN.")
 	}
 
-	// 5. Обычный запуск миграций (накатка)
+	// 4. Обычный запуск миграций (накатка)
 	if err := goose.Up(db.DB, "."); err != nil {
 		// Логируем ошибку миграции
 		log.Error("Migration failed:", "err", err)
@@ -78,11 +74,11 @@ func Run(cfg *config.Config) error {
 
 	log.Info("Database is up to date!")
 
-	// 6. Инициализация sqlc (dbgen)
+	// 5. Инициализация sqlc (dbgen)
 	// sqlx.DB отлично подходит, так как реализует интерфейс DBTX
 	store := dbgen.New(db)
 
-	// 7. Пример использования типизированного метода
+	// 6. Пример использования типизированного метода
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
