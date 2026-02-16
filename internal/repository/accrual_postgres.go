@@ -29,7 +29,8 @@ func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, e
 	var orders []string
 
 	// Запрос выбирает номера заказов, которые еще не в финальном статусе
-	query := `SELECT number FROM orders WHERE status NOT IN ('PROCESSED', 'INVALID')`
+	// query := `SELECT number FROM orders WHERE status NOT IN ('PROCESSED', 'INVALID')`
+	query := fmt.Sprintf("SELECT number FROM %s WHERE status NOT IN ('PROCESSED', 'INVALID')", ordersTable)
 
 	err := r.db.SelectContext(ctx, &orders, query)
 	if err != nil {
@@ -58,22 +59,31 @@ func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string,
 		val = *accrual
 	}
 
-	// 1. Обновляем статус и начисление в таблице заказов
-	_, err = tx.ExecContext(ctx,
-		"UPDATE orders SET status = $1, accrual = $2 WHERE number = $3",
+	// 1. Обновляем статус заказа и начисление в таблице заказов
+	updateOrderQuery := fmt.Sprintf("UPDATE %s SET status = $1, accrual = $2 WHERE number = $3", ordersTable)
+	_, err = tx.ExecContext(ctx, updateOrderQuery,
+		// "UPDATE orders SET status = $1, accrual = $2 WHERE number = $3",
 		status, val, orderID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update order: %w", err)
 	}
 
-	// 2. Если расчет окончен, начисляем баллы на баланс пользователя
+	// 2. Начисляем баллы, если заказ успешно обработан (на баланс пользователя)
 	if status == "PROCESSED" && val > 0 {
+		// Используем константы
 		// ВАЖНО: используем таблицу balance и прибавляем к колонке balance
-		_, err = tx.ExecContext(ctx,
-			`UPDATE balance 
-         SET balance = balance + $1 
-         WHERE user_id = (SELECT user_id FROM orders WHERE number = $2)`,
+		updateBalanceQuery := fmt.Sprintf(`
+			UPDATE %s 
+			SET balance = balance + $1 
+			WHERE user_id = (SELECT user_id FROM %s WHERE number = $2)`,
+			balanceTable, ordersTable,
+		)
+
+		_, err = tx.ExecContext(ctx, updateBalanceQuery,
+			// 	`UPDATE balance
+			//  SET balance = balance + $1
+			//  WHERE user_id = (SELECT user_id FROM orders WHERE number = $2)`,
 			val, orderID,
 		)
 		if err != nil {

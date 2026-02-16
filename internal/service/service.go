@@ -1,7 +1,6 @@
 package service
 
 import (
-	"gophermart/internal/accrual/dto"
 	"gophermart/internal/models"
 	"gophermart/internal/repository"
 )
@@ -20,15 +19,17 @@ type Authorization interface {
 }
 
 // Сервис работы с заказами
-type Orders interface {
-	// Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
-	ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
+type Order interface {
+	// Запись нового заказа в таблицу orders
+	RecordOrder(n string) error
+	// // Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
+	// ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
 }
 
 // Сервис лояльности
 type Loyalty interface {
-	// Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
-	ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
+	// // Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
+	// ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
 }
 
 // Здесь определены предметные области (доменные зоны).
@@ -38,7 +39,7 @@ type Service struct {
 	// Сервис аутентификации, со своим функционалом.
 	Authorization
 	// Сервис работы с заказами, со своим функционалом.
-	Orders
+	Order
 	// Сервис лояльности, со своим функционалом.
 	Loyalty
 }
@@ -47,7 +48,7 @@ type Service struct {
 func NewService(repos *repository.Repository) *Service {
 	return &Service{
 		Authorization: NewAuthService(repos.Authorization),
-		// Orders: ,
+		Order:         NewOrderService(repos.Order),
 		// LoLoyalty: ,
 	}
 }

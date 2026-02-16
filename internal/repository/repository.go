@@ -12,6 +12,12 @@ type Authorization interface {
 	GetUser(login, password string) (models.User, error)
 }
 
+// Сервис работы с заказами
+type Order interface {
+	// ТЕОРИЯ! Запись нового заказа в таблицу orders
+	RecordOrder(n string) error
+}
+
 // Функционал работы accrual с db
 type OrderStore interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
@@ -24,6 +30,7 @@ type Loyalty interface {
 
 type Repository struct {
 	Authorization
+	Order
 	OrderStore
 	Loyalty
 }
@@ -31,6 +38,7 @@ type Repository struct {
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{
 		Authorization: NewAuthPostgres(db),
+		Order:         NewOrderPostgres(db),
 		OrderStore:    NewAccrualPostgres(db),
 		// Loyalty: ,
 	}

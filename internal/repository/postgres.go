@@ -7,6 +7,7 @@ import (
 const (
 	usersTable   = "users"
 	balanceTable = "balance"
+	ordersTable  = "orders"
 )
 
 // Call from app

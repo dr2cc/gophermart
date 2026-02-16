@@ -38,19 +38,26 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	{
 		user := api.Group("/user")
 		{
+			// Раздел аутентификации.
 			user.POST("/register", h.signUp)
 			user.POST("/login", h.signIn)
 
-			// 		user.POST("/orders", h.createOrder)
-			// 		user.GET("/orders", h.readOrders)
+			// Раздел работы с заказами.
+			user.POST("/orders", h.createOrder)
+			// user.GET("/orders", h.readOrders)
 
-			// 		user.GET("/withdrawals", h.createWithdrawals)
+			// // Раздел работы со списаниями.
+			// // - получение информации о списании средств
+			// user.GET("/withdrawals", h.readWithdrawals)
 
-			// 		balance := user.Group("/balance")
-			// 		{
-			// 			balance.GET("/", h.readBalance)
-			// 			balance.POST("/withdraw", h.createWithdraw)
-			// 		}
+			// // Раздел работы с балансом.
+			// balance := user.Group("/balance")
+			// {
+			// 	// - получение текущего баланса пользователя
+			// 	balance.GET("/", h.readBalance)
+			// 	// - запрос на списание средств с баланса
+			// 	balance.POST("/withdraw", h.createWithdraw)
+			// }
 		}
 	}
 
