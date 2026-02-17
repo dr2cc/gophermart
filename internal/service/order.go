@@ -12,6 +12,10 @@ func NewOrderService(repo repository.Order) *OrderService {
 }
 
 func (o *OrderService) RecordOrder(n string) error {
-
+	// Номер заказа может быть проверен на корректность ввода с помощью [алгоритма Луна]
+	// Отдаем номер в db
+	if n != "0" {
+		return ErrOrderAlreadyExists
+	}
 	return nil
 }

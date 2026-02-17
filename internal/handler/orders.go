@@ -2,6 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"errors"
+	"gophermart/internal/service"
 	"io"
 	"net/http"
 
@@ -40,10 +42,6 @@ func (h *Handler) createOrder(c *gin.Context) {
 
 	// 3️⃣ Передаем данные в службу нашего приложения.
 	err = h.services.Order.RecordOrder(text)
-	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
 	// 4️⃣ Возвращаем клиенту response.
 	// - `200` — номер заказа уже был загружен этим пользователем;
 	// - `202` StatusAccepted — новый номер заказа принят в обработку;
@@ -52,5 +50,22 @@ func (h *Handler) createOrder(c *gin.Context) {
 	// - `409` — номер заказа уже был загружен другим пользователем;
 	// - `422` StatusUnprocessableEntity  — неверный формат номера заказа;
 	// - `500` — внутренняя ошибка сервера.
-	c.String(http.StatusAccepted, "Received: %s", text)
+
+	if err != nil {
+
+		// Мапим ошибку на HTTP код
+		switch {
+		case errors.Is(err, service.ErrOrderAlreadyExists):
+			//c.String(http.StatusConflict, "Order already registered")
+			newErrorResponse(c, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrInvalidOrderFormat):
+			c.String(http.StatusUnprocessableEntity, "Invalid format: %s", text)
+		default:
+			//c.String(http.StatusInternalServerError, "Internal server error")
+			newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	c.String(http.StatusAccepted, "")
 }
