@@ -10,7 +10,7 @@ func NewOrderPostgres(db *sqlx.DB) *OrderPostgres {
 	return &OrderPostgres{db: db}
 }
 
-func (o *OrderPostgres) RecordOrder(n string) error {
+func (r *OrderPostgres) RecordOrder(n string) error {
 
 	return nil
 }

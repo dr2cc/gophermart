@@ -25,7 +25,9 @@ type tokenClaims struct {
 	UserId int `json:"user_id"`
 }
 
-// "Общение" с репозиторием, сервиса аутентификации
+// "Общение" с репозиторием, сервиса аутентификации:
+// структура в которую (в конструкторе ниже)
+// будем принимать репозиторий (для работы в базе)
 type AuthService struct {
 	repo repository.Authorization
 }
@@ -34,6 +36,8 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
+// Внедрим (в структуру AuthService) метод CreateUser..
+// В нем мы будем передавать пользователя, еще на слой ниже- в репозиторий.
 func (s *AuthService) CreateUser(user models.User) (int, error) {
 	user.Password = generatePasswordHash(user.Password)
 	return s.repo.CreateUser(user)

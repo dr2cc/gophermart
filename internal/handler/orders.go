@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"gophermart/internal/service"
 	"io"
 	"net/http"
@@ -26,7 +27,10 @@ func (h *Handler) createOrder(c *gin.Context) {
 	// Получаем "сырые" данные
 	body, err := c.GetRawData()
 	if err != nil {
-		c.String(http.StatusBadRequest, "Error reading request body")
+		// // Это стандартный вызов ошибки в gin
+		//c.String(http.StatusBadRequest, "Error reading request body")
+		// Но у нас есть кастомный
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	// "Возвращаем" данные в тело запроса.
@@ -36,7 +40,7 @@ func (h *Handler) createOrder(c *gin.Context) {
 	// Преобразуем в строку
 	text := string(body)
 	if text == "" {
-		c.String(http.StatusUnprocessableEntity, "order number required")
+		newErrorResponse(c, http.StatusUnprocessableEntity, "order number required")
 		return
 	}
 
@@ -57,11 +61,11 @@ func (h *Handler) createOrder(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrOrderAlreadyExists):
 			//c.String(http.StatusConflict, "Order already registered")
-			newErrorResponse(c, http.StatusConflict, err.Error())
+			newErrorResponse(c, http.StatusConflict, "Order already registered")
 		case errors.Is(err, service.ErrInvalidOrderFormat):
-			c.String(http.StatusUnprocessableEntity, "Invalid format: %s", text)
+			errMessage := fmt.Sprintf("Invalid format: %s", err.Error())
+			newErrorResponse(c, http.StatusUnprocessableEntity, errMessage)
 		default:
-			//c.String(http.StatusInternalServerError, "Internal server error")
 			newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		}
 		return
