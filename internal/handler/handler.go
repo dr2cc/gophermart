@@ -19,17 +19,17 @@ import (
 // все эндпойнты и инициализатор роутера.
 // - В качестве зависимости Handler имеет
 // указатель на структуру сервисов.
-type Handler struct {
+type handler struct {
 	services *service.Service
 }
 
 // Called from app
-func NewHandler(services *service.Service) *Handler {
-	return &Handler{services: services}
+func NewHandler(services *service.Service) *handler {
+	return &handler{services: services}
 }
 
 // Called from app
-func (h *Handler) InitRoutes() *gin.Engine {
+func (h *handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

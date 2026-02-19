@@ -17,7 +17,7 @@ import (
 // 3️⃣ Передаем данные в службу нашего приложения.
 // 4️⃣ Возвращаем клиенту response.
 
-func (h *Handler) createOrder(c *gin.Context) {
+func (h *handler) createOrder(c *gin.Context) {
 	// Content-Type: text/plain
 	// ```
 	// 0

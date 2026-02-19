@@ -25,25 +25,31 @@ type tokenClaims struct {
 	UserId int `json:"user_id"`
 }
 
-// "Общение" с репозиторием, сервиса аутентификации:
-// структура в которую (в конструкторе ниже)
-// будем принимать репозиторий (для работы в базе)
-type AuthService struct {
+// 📍Service implementation struct. Она же:
+// - 📍Provider - в контексте Dependency Injection.
+// Структура, которая «предоставляет» определенный функционал.
+// - 📍Concrete Type. Технический термин, противопоставляющий структуру интерфейсу.
+// - 📍Receiver. Такую структуру называют получателем методов,
+// т.к. методы службы «привязаны» к этой структуре.
+// Отдадим, в конструкторе ниже, структуру в которую там же
+// Приняли интерфейс репозитория (для "общения" с базой).
+type authService struct {
+	// зависимости:
 	repo repository.Authorization
 }
 
-func NewAuthService(repo repository.Authorization) *AuthService {
-	return &AuthService{repo: repo}
+func NewAuthService(repo repository.Authorization) *authService {
+	return &authService{repo: repo}
 }
 
 // Внедрим (в структуру AuthService) метод CreateUser..
 // В нем мы будем передавать пользователя, еще на слой ниже- в репозиторий.
-func (s *AuthService) CreateUser(user models.User) (int, error) {
+func (s *authService) CreateUser(user models.User) (int, error) {
 	user.Password = generatePasswordHash(user.Password)
 	return s.repo.CreateUser(user)
 }
 
-func (s *AuthService) GenerateToken(login, password string) (string, error) {
+func (s *authService) GenerateToken(login, password string) (string, error) {
 	user, err := s.repo.GetUser(login, generatePasswordHash(password))
 	if err != nil {
 		return "", err
@@ -61,7 +67,7 @@ func (s *AuthService) GenerateToken(login, password string) (string, error) {
 	return token.SignedString([]byte(signingKey))
 }
 
-func (s *AuthService) ParseToken(accessToken string) (int, error) {
+func (s *authService) ParseToken(accessToken string) (int, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")

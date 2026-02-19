@@ -27,7 +27,7 @@ import (
 // @Failure 500 {object} errorResponse
 // @Failure default {object} errorResponse
 // @Router /auth/sign-up [post]
-func (h *Handler) signUp(c *gin.Context) {
+func (h *handler) signUp(c *gin.Context) {
 	var input models.User
 
 	// 1️⃣ Принимаем данные из сети, 2️⃣ десериализуем и заполняем (, &input) models
@@ -72,7 +72,7 @@ type signInInput struct {
 // @Failure 500 {object} errorResponse
 // @Failure default {object} errorResponse
 // @Router /auth/sign-in [post]
-func (h *Handler) signIn(c *gin.Context) {
+func (h *handler) signIn(c *gin.Context) {
 	var input signInInput
 
 	// 1️⃣ Принимаем данные из сети, 2️⃣ десериализуем и заполняем (, &input) models
