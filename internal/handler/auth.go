@@ -84,6 +84,12 @@ func (h *handler) signIn(c *gin.Context) {
 	// 3️⃣ // Пытаемся создать token, отдаем структуру input сервису
 	token, err := h.services.Authorization.GenerateToken(input.Login, input.Password)
 	if err != nil {
+		// неверная пара логин/пароль
+		if errors.Is(err, repository.ErrInvalidCredentials) {
+			newErrorResponse(c, http.StatusUnauthorized, "invalid login/password pair") //409
+			return
+		}
+		// остальные ошибки
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}

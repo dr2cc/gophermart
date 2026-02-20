@@ -41,17 +41,21 @@ func (h *handler) InitRoutes() *gin.Engine {
 			// Раздел аутентификации.
 			user.POST("/register", h.signUp)
 			user.POST("/login", h.signIn)
-
+		}
+		// midleware. Парсит токены из запроса
+		// и предоставляет доступ эндпойнтам ниже
+		userAuth := api.Group("/user", h.userIdentity)
+		{
 			// Раздел работы с заказами.
-			user.POST("/orders", h.createOrder)
-			// user.GET("/orders", h.readOrders)
+			userAuth.POST("/orders", h.createOrder)
+			// userAuth.GET("/orders", h.readOrders)
 
 			// // Раздел работы со списаниями.
 			// // - получение информации о списании средств
-			// user.GET("/withdrawals", h.readWithdrawals)
+			// userAuth.GET("/withdrawals", h.readWithdrawals)
 
 			// // Раздел работы с балансом.
-			// balance := user.Group("/balance")
+			// balance := userAuth.Group("/balance")
 			// {
 			// 	// - получение текущего баланса пользователя
 			// 	balance.GET("/", h.readBalance)

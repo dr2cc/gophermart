@@ -1,6 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 -- 1. Таблица заказов
+-- ❌ПРОВЕРИТЬ КАК В ОРИГИНАЛАХ- ♊ и уже готовом
 CREATE TABLE orders (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     order_id UUID, -- разобраться!
@@ -13,7 +14,7 @@ CREATE TABLE orders (
             'PROCESSED'
         )
     ),
-    accrual NUMERIC(10, 2) DEFAULT 0,
+    accrual NUMERIC(10, 2) DEFAULT 0, -- видимо сюда записывает свои данные accrual
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     attempts SMALLINT DEFAULT 0
