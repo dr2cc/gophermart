@@ -31,7 +31,7 @@ func (r *AuthPostgres) CreateUser(user models.User) (int, error) {
 
 	var id int
 	// 1. Создаем пользователя
-	userQuery := fmt.Sprintf("INSERT INTO %s (login, hash) VALUES ($1, $2) RETURNING id", usersTable)
+	userQuery := fmt.Sprintf("INSERT INTO %s (login, password_hash) VALUES ($1, $2) RETURNING id", usersTable)
 	if err := tx.QueryRow(userQuery, user.Login, user.Password).Scan(&id); err != nil {
 		var pgErr *pq.Error
 		// Проверяем, является ли ошибка нарушением уникальности
@@ -59,7 +59,7 @@ func (r *AuthPostgres) CreateUser(user models.User) (int, error) {
 
 func (r *AuthPostgres) GetUser(login, password string) (models.User, error) {
 	var user models.User
-	query := fmt.Sprintf("SELECT id FROM %s WHERE login=$1 AND hash=$2", usersTable)
+	query := fmt.Sprintf("SELECT id FROM %s WHERE login=$1 AND password_hash=$2", usersTable)
 	err := r.db.Get(&user, query, login, password)
 	//
 

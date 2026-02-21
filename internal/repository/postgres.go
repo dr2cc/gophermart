@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	usersTable   = "users"
-	balanceTable = "balance"
-	ordersTable  = "orders"
+	usersTable          = "users"
+	ordersTable         = "orders"
+	balanceTable        = "balance"
+	balanceHistoryTable = "balance_history"
 )
 
 // Call from app

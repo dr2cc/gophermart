@@ -3,9 +3,10 @@
 -- 1. Таблица заказов
 -- ❌ПРОВЕРИТЬ КАК В ОРИГИНАЛАХ- ♊ и уже готовом
 CREATE TABLE orders (
+    -- number
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    order_id UUID, -- разобраться!
     user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    order_id UUID, -- новый, с 9:26. Разобраться!
     status VARCHAR(50) NOT NULL CHECK (
         status IN (
             'NEW',
@@ -15,7 +16,7 @@ CREATE TABLE orders (
         )
     ),
     accrual NUMERIC(10, 2) DEFAULT 0, -- видимо сюда записывает свои данные accrual
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), -- ex. uploaded_at 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     attempts SMALLINT DEFAULT 0
 );
@@ -43,7 +44,7 @@ CREATE INDEX idx_balance_history_user_id ON balance_history (user_id);
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE withdrawals;
+DROP TABLE balance_history;
 
 DROP TABLE balance;
 
