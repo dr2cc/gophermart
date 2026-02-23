@@ -47,9 +47,9 @@ CREATE INDEX idx_balance_history_user_id ON balance_history (user_id);
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE balance_history;
+DROP TABLE IF EXISTS balance_history;
 
-DROP TABLE balance;
+DROP TABLE IF EXISTS balance;
 
-DROP TABLE orders;
+DROP TABLE IF EXISTS orders;
 -- +goose StatementEnd

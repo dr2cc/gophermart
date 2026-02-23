@@ -39,7 +39,7 @@ func Run(cfg *config.Config) error {
 	// db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
 	db, err := repository.NewPostgresDB(cfg.DatabaseDSN)
 	if err != nil {
-		// это примерный аналог log.Fatal(err) для slog
+		// эти две строки- примерный аналог log.Fatal(err) для slog
 		log.Error("failed to connect to db", "err", err)
 		os.Exit(1)
 	}
