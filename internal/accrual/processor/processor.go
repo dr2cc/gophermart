@@ -57,17 +57,14 @@ func processOrders(ctx context.Context, store OrderStore, client *accrual.Client
 
 		if err != nil {
 			if err == dto.ErrTooManyRequests {
-				//log.Printf("Rate limit hit, sleeping for %v", retryAfter)
 				slog.Info("rate limit hit", "retry_after", retryAfter)
 				time.Sleep(retryAfter)
 				return // Выходим из цикла обработки текущей пачки, чтобы подождать
 			}
 			if err == dto.ErrOrderNotRegistered {
-				//log.Printf("Order %s not registered in accrual system", orderNum)
 				slog.Info("order not registered in accrual system", "order_id", orderNum)
 				continue
 			}
-			//log.Printf("Error fetching accrual for %s: %v", orderNum, err)
 			slog.Error("error fetching accrual", "order", orderNum, "err", err)
 			continue
 		}
