@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gophermart/db/dbgen"
 	"gophermart/db/migrations" // импорт вашего пакета с FS
 	"gophermart/internal/accrual"
 	"gophermart/internal/accrual/processor"
@@ -31,12 +30,13 @@ const (
 	envProd  = "prod"
 )
 
+// "Точка сборки" (композитор) приложения.
 func Run(cfg *config.Config) error {
 	log := setupLogger(cfg.Env)
 	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
-	// 1. Коннект
-	// db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+	// 1. Инициализация подключения к БД
+	// Используем кастомный конструктор для настройки пула соединений Postgres
 	db, err := repository.NewPostgresDB(cfg.DatabaseDSN)
 	if err != nil {
 		// эти две строки- примерный аналог log.Fatal(err) для slog
@@ -45,8 +45,8 @@ func Run(cfg *config.Config) error {
 	}
 	defer db.Close()
 
-	// 2. Запуск миграций Goose перед стартом логики (проверка наличия таблиц и их создание)
-	// Передаем стандартный *sql.DB через db.DB
+	// 2. Настройка системы миграций Goose
+	// Используем встроенную файловую систему (go:embed) для работы с SQL-файлами
 	goose.SetBaseFS(migrations.FS) // migrations.FS — переменная с go:embed
 	if err := goose.SetDialect("postgres"); err != nil {
 		log.Error("Goose error", "err", err)
@@ -54,7 +54,8 @@ func Run(cfg *config.Config) error {
 	}
 	log.Info("Applying migrations...")
 
-	// 3. МАГИЯ: Если запустили с флагом -drop
+	// 3. Режим очистки БД (Drop/Reset, запуск с флагом -drop)
+	// Если передан флаг очистки, откатываем все миграции перед стартом
 	if cfg.DropDB {
 		log.Info("Cleaning up the database...")
 		// Ресет выполнит все Down блоки
@@ -65,61 +66,50 @@ func Run(cfg *config.Config) error {
 		log.Info("DB IS CLEAN.")
 	}
 
-	// 4. Обычный запуск миграций (накатка)
+	// 4. Применение актуальных миграций
+	// Приводим схему БД к актуальному состоянию (команда Up)
 	if err := goose.Up(db.DB, "."); err != nil {
 		// Логируем ошибку миграции
 		log.Error("Migration failed:", "err", err)
 		os.Exit(1)
 	}
-
 	log.Info("Database is up to date!")
 
-	// 5. Инициализация sqlc (dbgen)
-	// sqlx.DB отлично подходит, так как реализует интерфейс DBTX
-	store := dbgen.New(db)
-
-	// 6. Пример использования типизированного метода
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	user, err := store.GetUserByLogin(ctx, "admin")
-	if err != nil {
-		// Если пользователь не найден, sqlc вернет sql.ErrNoRows
-	}
-
-	// Теперь у вас есть доступ к полям через точку с правильными типами
-	println("User ID:", user.ID)
-	println("User Login:", user.Login)
-	//
-
+	// 5. Сборка зависимостей (Dependency Injection)
+	// Инициализируем цепочку Репозиторий -> Сервис -> Хендлер
 	repository := repository.NewRepository(db)
 	services := service.NewService(repository)
 	handlers := handler.NewHandler(services)
 
+	// 6. Подготовка контекста для завершения работы
+	// Слушаем сигналы ОС (Ctrl+C, SIGTERM) для корректной остановки
 	// Создаем корневой контекст, который отменится при сигналах завершения
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	// 7. Запуск фоновых процессов.
+	// Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
+	//
 	// Инициализируем клиент accrual и запускаем фоновый процессор
 	accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	// Передаем ctx внутрь. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
 	processor.Run(ctx, repository.OrderStore, accrualClient, log)
 
-	// Настройка сервера
+	// 8. Запуск HTTP-сервера
 	srv := new(server.Server)
 	serverErrors := make(chan error, 1)
 
 	go func() {
 		log.Info("App is starting")
-		// Инициализируем роуты
+		// Запуск прослушивания порта, инициализируем роуты
 		if err := srv.Run(cfg.ServerAddress, handlers.InitRoutes()); err != nil {
+			// ErrServerClosed игнорируем, так как это штатная остановка.
 			if !errors.Is(err, http.ErrServerClosed) {
 				serverErrors <- fmt.Errorf("server listener crashed: %w", err)
 			}
 		}
 	}()
 
-	// Ожидание завершения
+	// 9. Ожидание событий завершения (блокировка основной горутины)
 	select {
 	case err := <-serverErrors:
 		return err // Если сервер сам упал
@@ -127,9 +117,9 @@ func Run(cfg *config.Config) error {
 	case <-ctx.Done(): // Сработает при SIGTERM/SIGINT
 		log.Info("Shutting down gracefully", slog.String("signal", "interrupt"))
 
-		// Даем 5 секунд на то, чтобы сервер и воркеры завершили текущие дела
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// Даем 5 секунд на то, чтобы сервер и воркеры завершили активные запросы (timeout)
+		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdown()
 
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to shutdown http server: %w", err)

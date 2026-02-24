@@ -4,6 +4,7 @@ import (
 	"context"
 	"gophermart/internal/accrual"
 	"gophermart/internal/accrual/dto"
+	"gophermart/internal/repository"
 	"log/slog"
 	"time"
 )
@@ -17,9 +18,11 @@ import (
 // Ему всё равно, как именно это делает любая база данных.
 type OrderStore interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
-	UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
+	// UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
+	UpdateOrderStatus(ctx context.Context, orderID string, status repository.TaskStatus, accrual *float64) error
 }
 
+// Получили ctx из app.Run. Когда в консоли нажмут Ctrl+C, в процессоре сработает <-ctx.Done()
 func Run(ctx context.Context, store OrderStore, client *accrual.Client, log *slog.Logger) {
 	go func() {
 		ticker := time.NewTicker(2 * time.Second) // Интервал проверки БД
@@ -47,7 +50,6 @@ func processOrders(ctx context.Context, store OrderStore, client *accrual.Client
 	// 1. Берем заказы, которые еще не завершены (NEW, PROCESSING)
 	orders, err := store.GetUnprocessedOrders(ctx)
 	if err != nil {
-		// log.Printf("failed to fetch orders: %v", err)
 		log.Error("failed to fetch orders:", "err", err)
 		return
 	}
@@ -74,7 +76,6 @@ func processOrders(ctx context.Context, store OrderStore, client *accrual.Client
 		if resp.Status == "PROCESSED" || resp.Status == "INVALID" {
 			err := store.UpdateOrderStatus(ctx, resp.Order, resp.Status, resp.Accrual)
 			if err != nil {
-				//log.Printf("Failed to update order %s: %v", resp.Order, err)
 				log.Error("failed to update order", "order", resp.Order, "err", err)
 			}
 		}

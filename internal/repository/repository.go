@@ -21,7 +21,8 @@ type Order interface {
 // Функционал работы accrual с db
 type OrderStore interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
-	UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
+	// UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
+	UpdateOrderStatus(ctx context.Context, orderID string, status TaskStatus, accrual *float64) error
 }
 
 type Loyalty interface {

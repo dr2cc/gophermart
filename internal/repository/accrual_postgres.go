@@ -7,6 +7,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type TaskStatus string
+
+const (
+	StatusNew        TaskStatus = "NEW"
+	StatusProcessing TaskStatus = "PROCESSING"
+	StatusInvalid    TaskStatus = "INVALID"
+	StatusProcessed  TaskStatus = "PROCESSED"
+)
+
 type AccrualPostgres struct {
 	db *sqlx.DB
 }
@@ -14,11 +23,6 @@ type AccrualPostgres struct {
 func NewAccrualPostgres(db *sqlx.DB) *AccrualPostgres {
 	return &AccrualPostgres{db: db}
 }
-
-// Столбцы (columns) таблицы orders:
-// number , user_id , status , accrual , uploaded_at (TIMESTAMP), updated_at (TIMESTAMP), attempts
-// Столбцы (columns) таблицы users:
-// id , login , hash , created_at (TIMESTAMP)
 
 // Метод GetUnprocessedOrders - «глаза» вашего воркера.
 // Он лезет в БД и ищет заказы, по которым мы еще не получили финальный ответ от системы лояльности.
@@ -28,15 +32,16 @@ func NewAccrualPostgres(db *sqlx.DB) *AccrualPostgres {
 func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, error) {
 	var orders []string
 
-	// Запрос выбирает номера заказов, которые еще не в финальном статусе
-	// query := `SELECT number FROM orders WHERE status NOT IN ('PROCESSED', 'INVALID')`
-	query := fmt.Sprintf("SELECT number FROM %s WHERE status NOT IN ('PROCESSED', 'INVALID')", ordersTable)
+	// Используем константы для фильтрации
+	query := fmt.Sprintf(
+		"SELECT order_number FROM %s WHERE status NOT IN ($1, $2)",
+		ordersTable,
+	)
 
-	err := r.db.SelectContext(ctx, &orders, query)
+	err := r.db.SelectContext(ctx, &orders, query, StatusProcessed, StatusInvalid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch unprocessed orders: %w", err)
 	}
-
 	return orders, nil
 }
 
@@ -45,7 +50,7 @@ func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, e
 // Важно: Если пришел статус PROCESSED, нужно начислить баллы (accrual) на баланс пользователя.
 // Это должно быть атомарно (в одной транзакции), чтобы не вышло так, что статус заказа изменился,
 // а баллы пользователю «не долетели».
-func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error {
+func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string, status TaskStatus, accrual *float64) error {
 	// Начинаем транзакцию с контекстом
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -59,33 +64,22 @@ func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string,
 		val = *accrual
 	}
 
-	// 1. Обновляем статус заказа и начисление в таблице заказов
-	updateOrderQuery := fmt.Sprintf("UPDATE %s SET status = $1, accrual = $2 WHERE number = $3", ordersTable)
-	_, err = tx.ExecContext(ctx, updateOrderQuery,
-		// "UPDATE orders SET status = $1, accrual = $2 WHERE number = $3",
-		status, val, orderID,
-	)
+	// 1. Обновляем статус заказа (Postgres сам приведет TaskStatus(string) к ENUM)
+	updateOrderQuery := fmt.Sprintf("UPDATE %s SET status = $1, accrual = $2 WHERE order_number = $3", ordersTable)
+	_, err = tx.ExecContext(ctx, updateOrderQuery, status, val, orderID)
 	if err != nil {
 		return fmt.Errorf("failed to update order: %w", err)
 	}
 
-	// 2. Начисляем баллы, если заказ успешно обработан (на баланс пользователя)
-	if status == "PROCESSED" && val > 0 {
-		// Используем константы
-		// ВАЖНО: используем таблицу balance и прибавляем к колонке balance
+	// 2. Начисляем баллы, если статус Processed
+	if status == StatusProcessed && val > 0 {
 		updateBalanceQuery := fmt.Sprintf(`
-			UPDATE %s 
-			SET balance = balance + $1 
-			WHERE user_id = (SELECT user_id FROM %s WHERE number = $2)`,
+            UPDATE %s
+            SET balance = balance + $1
+            WHERE user_id = (SELECT user_id FROM %s WHERE order_number = $2)`,
 			balanceTable, ordersTable,
 		)
-
-		_, err = tx.ExecContext(ctx, updateBalanceQuery,
-			// 	`UPDATE balance
-			//  SET balance = balance + $1
-			//  WHERE user_id = (SELECT user_id FROM orders WHERE number = $2)`,
-			val, orderID,
-		)
+		_, err = tx.ExecContext(ctx, updateBalanceQuery, val, orderID)
 		if err != nil {
 			return fmt.Errorf("failed to update user balance: %w", err)
 		}
@@ -94,3 +88,65 @@ func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string,
 	// Коммит транзакции
 	return tx.Commit()
 }
+
+// func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, error) {
+// 	var orders []string
+
+// 	// Запрос выбирает номера заказов, которые еще не в финальном статусе
+// 	// query := `SELECT order_number FROM orders WHERE status NOT IN ('PROCESSED', 'INVALID')`
+// 	query := fmt.Sprintf("SELECT order_number FROM %s WHERE status NOT IN ('PROCESSED', 'INVALID')", ordersTable)
+
+// 	err := r.db.SelectContext(ctx, &orders, query)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to fetch unprocessed orders: %w", err)
+// 	}
+
+// 	return orders, nil
+// }
+
+// func (r *AccrualPostgres) UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error {
+// 	// Начинаем транзакцию с контекстом
+// 	tx, err := r.db.BeginTxx(ctx, nil)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to start transaction: %w", err)
+// 	}
+// 	defer tx.Rollback()
+
+// 	var val float64
+// 	if accrual != nil {
+// 		val = *accrual
+// 	}
+
+// 	// 1. Обновляем статус заказа и начисление в таблице заказов
+// 	updateOrderQuery := fmt.Sprintf("UPDATE %s SET status = $1, accrual = $2 WHERE order_number = $3", ordersTable)
+// 	_, err = tx.ExecContext(ctx, updateOrderQuery,
+// 		// "UPDATE orders SET status = $1, accrual = $2 WHERE order_number = $3",
+// 		status, val, orderID,
+// 	)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update order: %w", err)
+// 	}
+
+// 	// 2. Начисляем баллы, если заказ успешно обработан (на баланс пользователя)
+// 	if status == "PROCESSED" && val > 0 {
+// 		// Используем константы
+// 		// ВАЖНО: используем таблицу balance и прибавляем к колонке balance
+// 		updateBalanceQuery := fmt.Sprintf(`
+// 			UPDATE %s
+// 			SET balance = balance + $1
+// 			WHERE user_id = (SELECT user_id FROM %s WHERE order_number = $2)`,
+// 			balanceTable, ordersTable,
+// 		)
+// 		_, err = tx.ExecContext(ctx, updateBalanceQuery,
+// 			// 	`UPDATE balance
+// 			//  SET balance = balance + $1
+// 			//  WHERE user_id = (SELECT user_id FROM orders WHERE order_number = $2)`,
+// 			val, orderID,
+// 		)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to update user balance: %w", err)
+// 		}
+// 	}
+
+// 	return tx.Commit()
+// }

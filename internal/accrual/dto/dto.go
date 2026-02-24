@@ -2,6 +2,7 @@ package dto
 
 import (
 	"errors"
+	"gophermart/internal/repository"
 )
 
 var (
@@ -10,7 +11,7 @@ var (
 )
 
 type OrderResponse struct {
-	Order   string   `json:"order"`
-	Status  string   `json:"status"`
-	Accrual *float64 `json:"accrual,omitempty"` // Используем указатель, чтобы поймать null/отсутствие
+	Order   string                `json:"order"`
+	Status  repository.TaskStatus `json:"status"`
+	Accrual *float64              `json:"accrual,omitempty"` // Используем указатель, чтобы поймать null/отсутствие
 }

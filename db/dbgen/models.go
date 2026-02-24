@@ -7,35 +7,40 @@ package dbgen
 import (
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Balance struct {
+	ID      int64          `json:"id"`
 	UserID  int64          `json:"user_id"`
 	Balance sql.NullString `json:"balance"`
 	Debited sql.NullString `json:"debited"`
 }
 
-type Order struct {
-	Number     string         `json:"number"`
-	UserID     int64          `json:"user_id"`
-	Status     string         `json:"status"`
-	Accrual    sql.NullString `json:"accrual"`
-	UploadedAt time.Time      `json:"uploaded_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	Attempts   sql.NullInt16  `json:"attempts"`
-}
-
-type User struct {
-	ID        int64     `json:"id"`
-	Login     string    `json:"login"`
-	Hash      string    `json:"hash"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type Withdrawal struct {
+type BalanceHistory struct {
 	ID          int64     `json:"id"`
 	UserID      int64     `json:"user_id"`
 	OrderNum    string    `json:"order_num"`
 	Sum         string    `json:"sum"`
 	ProcessedAt time.Time `json:"processed_at"`
+}
+
+type Order struct {
+	ID          int64          `json:"id"`
+	OrderNumber string         `json:"order_number"`
+	OrderID     uuid.NullUUID  `json:"order_id"`
+	UserID      int64          `json:"user_id"`
+	Status      interface{}    `json:"status"`
+	Accrual     sql.NullString `json:"accrual"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	Attempts    sql.NullInt16  `json:"attempts"`
+}
+
+type User struct {
+	ID           int64     `json:"id"`
+	Login        string    `json:"login"`
+	PasswordHash string    `json:"password_hash"`
+	CreatedAt    time.Time `json:"created_at"`
 }

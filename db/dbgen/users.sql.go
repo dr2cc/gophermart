@@ -11,45 +11,45 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO
-    users (login, hash)
+    users (login, password_hash)
 VALUES ($1, $2)
 RETURNING
     id,
     login,
-    hash
+    password_hash
 `
 
 type CreateUserParams struct {
-	Login string `json:"login"`
-	Hash  string `json:"hash"`
+	Login        string `json:"login"`
+	PasswordHash string `json:"password_hash"`
 }
 
 type CreateUserRow struct {
-	ID    int64  `json:"id"`
-	Login string `json:"login"`
-	Hash  string `json:"hash"`
+	ID           int64  `json:"id"`
+	Login        string `json:"login"`
+	PasswordHash string `json:"password_hash"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Login, arg.Hash)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Login, arg.PasswordHash)
 	var i CreateUserRow
-	err := row.Scan(&i.ID, &i.Login, &i.Hash)
+	err := row.Scan(&i.ID, &i.Login, &i.PasswordHash)
 	return i, err
 }
 
 const getUserByLogin = `-- name: GetUserByLogin :one
-SELECT id, login, hash FROM users WHERE login = $1 LIMIT 1
+SELECT id, login, password_hash FROM users WHERE login = $1 LIMIT 1
 `
 
 type GetUserByLoginRow struct {
-	ID    int64  `json:"id"`
-	Login string `json:"login"`
-	Hash  string `json:"hash"`
+	ID           int64  `json:"id"`
+	Login        string `json:"login"`
+	PasswordHash string `json:"password_hash"`
 }
 
 func (q *Queries) GetUserByLogin(ctx context.Context, login string) (GetUserByLoginRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByLogin, login)
 	var i GetUserByLoginRow
-	err := row.Scan(&i.ID, &i.Login, &i.Hash)
+	err := row.Scan(&i.ID, &i.Login, &i.PasswordHash)
 	return i, err
 }

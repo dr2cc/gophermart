@@ -1,11 +1,11 @@
 -- name: CreateUser :one
 INSERT INTO
-    users (login, hash)
+    users (login, password_hash)
 VALUES ($1, $2)
 RETURNING
     id,
     login,
-    hash;
+    password_hash;
 
 -- name: GetUserByLogin :one
-SELECT id, login, hash FROM users WHERE login = $1 LIMIT 1;
+SELECT id, login, password_hash FROM users WHERE login = $1 LIMIT 1;
