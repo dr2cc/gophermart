@@ -4,8 +4,15 @@ export
 export LOCAL_BIN:=$(CURDIR)/bin
 export PATH:=$(LOCAL_BIN):$(PATH)
 
+# Для отсутствия ошибки при остановке работы по Ctrl+C
+# определяем макрос с перехватом сигнала (добавил только в run, можно и в другие)
+define safe_run
+	@trap 'echo "\n[Makefile] Completed by user"; exit 0' INT; \
+	$(1) || [ $$? -eq 130 ] || [ $$? -eq 2 ]
+endef
+
 run: ## just 'make' to run app
-	go run ./cmd/gophermart/main.go
+	$(call safe_run, go run ./cmd/gophermart/main.go)
 .PHONY: run
 
 help: ## display this help screen
