@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"gophermart/internal/models"
-	"gophermart/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +38,7 @@ func (h *handler) signUp(c *gin.Context) {
 	// 3️⃣ // Пытаемся создать пользователя, отдаем структуру input сервису
 	id, err := h.services.Authorization.CreateUser(input)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserAlreadyExists) {
+		if errors.Is(err, models.ErrUserAlreadyExists) {
 			newErrorResponse(c, http.StatusConflict, "The login is already taken") //409
 			return
 		}
@@ -85,7 +84,7 @@ func (h *handler) signIn(c *gin.Context) {
 	token, err := h.services.Authorization.GenerateToken(input.Login, input.Password)
 	if err != nil {
 		// неверная пара логин/пароль
-		if errors.Is(err, repository.ErrInvalidCredentials) {
+		if errors.Is(err, models.ErrInvalidCredentials) {
 			newErrorResponse(c, http.StatusUnauthorized, "invalid login/password pair") //409
 			return
 		}

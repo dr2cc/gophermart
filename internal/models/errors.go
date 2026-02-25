@@ -1,8 +1,10 @@
-package service
+package models
 
 import "errors"
 
 var (
+	ErrUserAlreadyExists          = errors.New("user already exists")
+	ErrInvalidCredentials         = errors.New("invalid login/password pair")
 	ErrOrderUploadedThisUser      = errors.New("order already uploaded this user") //200
 	ErrOrderAcceptedForProcessing = errors.New("order accepted for processing")    //202
 	ErrInvalidOrderFormat         = errors.New("invalid order format")             //400

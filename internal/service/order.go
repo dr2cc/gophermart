@@ -22,11 +22,9 @@ func NewOrderService(repo repository.Order) *orderService {
 // - `422` StatusUnprocessableEntity  — неверный формат номера заказа;
 // - `500` — внутренняя ошибка сервера.
 
-func (s *orderService) RecordOrder(n string) error {
+func (s *orderService) RecordOrder(id int, n string) error {
 	// Номер заказа может быть проверен на корректность ввода с помощью [алгоритма Луна]
+
 	// Отдаем номер в db
-	if n != "0" {
-		return ErrOrderAlreadyExists
-	}
-	return s.repo.RecordOrder(n)
+	return s.repo.RecordOrder(id, n)
 }

@@ -21,7 +21,7 @@ type Authorization interface {
 // Сервис работы с заказами
 type Order interface {
 	// Запись нового заказа в таблицу orders
-	RecordOrder(n string) error
+	RecordOrder(id int, n string) error
 	// // Теоретический функционал получения данных из accrual. Не знаю какому сервису нужен.
 	// ReceivingCalculationLoyaltyPointsAccrual(accrualResponse dto.OrderResponse) error
 }

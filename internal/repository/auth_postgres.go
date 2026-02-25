@@ -37,7 +37,7 @@ func (r *AuthPostgres) CreateUser(user models.User) (int, error) {
 		// Проверяем, является ли ошибка нарушением уникальности
 		// 23505 — код unique_violation
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return 0, ErrUserAlreadyExists
+			return 0, models.ErrUserAlreadyExists
 		}
 		return 0, err
 	}
@@ -67,7 +67,7 @@ func (r *AuthPostgres) GetUser(login, password string) (models.User, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Случай, когда записей нет (не является ошибкой БД)
 			//fmt.Println("401 — неверная пара логин/пароль")
-			return models.User{}, ErrInvalidCredentials
+			return models.User{}, models.ErrInvalidCredentials
 		}
 	}
 	return user, err

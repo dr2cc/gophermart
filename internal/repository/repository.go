@@ -15,7 +15,7 @@ type Authorization interface {
 // Сервис работы с заказами
 type Order interface {
 	// ТЕОРИЯ! Запись нового заказа в таблицу orders
-	RecordOrder(n string) error
+	RecordOrder(id int, n string) error
 }
 
 // Функционал работы accrual с db

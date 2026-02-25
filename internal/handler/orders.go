@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"gophermart/internal/service"
+	"gophermart/internal/models"
 	"io"
 	"net/http"
 
@@ -18,6 +18,7 @@ import (
 // 4️⃣ Возвращаем клиенту response.
 
 func (h *handler) createOrder(c *gin.Context) {
+	userId, err := getUserId(c)
 	// Content-Type: text/plain
 	// ```
 	// 0
@@ -45,7 +46,7 @@ func (h *handler) createOrder(c *gin.Context) {
 	}
 
 	// 3️⃣ Передаем данные в службу нашего приложения.
-	err = h.services.Order.RecordOrder(text)
+	err = h.services.Order.RecordOrder(userId, text)
 	// 4️⃣ Возвращаем клиенту response.
 	// - `200` — номер заказа уже был загружен этим пользователем;
 	// - `202` StatusAccepted — новый номер заказа принят в обработку;
@@ -59,10 +60,10 @@ func (h *handler) createOrder(c *gin.Context) {
 
 		// Мапим ошибку на HTTP код
 		switch {
-		case errors.Is(err, service.ErrOrderAlreadyExists):
+		case errors.Is(err, models.ErrOrderAlreadyExists):
 			//c.String(http.StatusConflict, "Order already registered")
 			newErrorResponse(c, http.StatusConflict, "Order already registered")
-		case errors.Is(err, service.ErrInvalidOrderFormat):
+		case errors.Is(err, models.ErrInvalidOrderFormat):
 			errMessage := fmt.Sprintf("Invalid format: %s", err.Error())
 			newErrorResponse(c, http.StatusUnprocessableEntity, errMessage)
 		default:
