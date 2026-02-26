@@ -45,10 +45,10 @@ type Service struct {
 }
 
 // Вызываается из main
-func NewService(repos *repository.Repository) *Service {
+func NewService(repo *repository.Repository) *Service {
 	return &Service{
-		Authorization: NewAuthService(repos.Authorization),
-		Order:         NewOrderService(repos.Order),
+		Authorization: NewAuthService(repo.Authorization),
+		Order:         NewOrderService(repo.Order),
 		// LoLoyalty: ,
 	}
 }

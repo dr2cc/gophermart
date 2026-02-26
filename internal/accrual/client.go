@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gophermart/internal/accrual/dto"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,7 +17,7 @@ type Client struct {
 }
 
 // Call from app
-func NewClient(address string) *Client {
+func NewClient(address string, log *slog.Logger) *Client {
 	return &Client{
 		Address: address,
 		HTTPClient: &http.Client{
@@ -26,18 +27,28 @@ func NewClient(address string) *Client {
 }
 
 func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderResponse, time.Duration, error) {
+	// Паттерн operation name.
+	const op = "accrual.GetAccrual"
+
+	// Без защиты "от дурака" HTTPClient (*http.Client) в Go не понимает,
+	// как обращаться к адресу, если в начале не указан протокол.
+	// Желательный формат ACCRUAL_SYSTEM_ADDRESS
+	// export ACCRUAL_SYSTEM_ADDRESS=http://localhost:8090
 	url := fmt.Sprintf("%s/api/orders/%s", c.Address, orderNum)
 
-	// 1️⃣ Принимаем данные от клиента
+	// Создаем http-запрос к серверу accrual
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	// 2️⃣ Мапим (?)
+	// Выполнение запроса (Do)
+	// Как работает: в этот момент Go открывает TCP-соединение, отправляет HTTP-заголовки и ждет ответа.
+	// Используется клиент HTTPClient (*http.Client), созданный в NewClient.
+	// У него есть свой тайм-аут (здесь 5 секунд), который подстрахует, если контекст ctx вдруг окажется бесконечным.
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("called %s from %s: %w", "HTTPClient", op, err)
 	}
 	defer resp.Body.Close()
 
-	// 3️⃣ Возвращаем результат
+	// Обрабатываем ошибки
 	// 429
 	if resp.StatusCode == http.StatusTooManyRequests {
 		retryAfter, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
@@ -54,11 +65,11 @@ func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderRes
 		return nil, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
+	// Мапим респонс на наш dto
 	var result dto.OrderResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("called %s from %s: %w", "NewDecoder", op, err)
 	}
 
-	// 4️⃣ Возвращаем клиенту response.
 	return &result, 0, nil
 }

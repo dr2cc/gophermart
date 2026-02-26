@@ -11,9 +11,9 @@ type TaskStatus string
 
 const (
 	StatusNew        TaskStatus = "NEW"
-	StatusProcessing TaskStatus = "PROCESSING"
-	StatusInvalid    TaskStatus = "INVALID"
-	StatusProcessed  TaskStatus = "PROCESSED"
+	StatusProcessing TaskStatus = "PROCESSING" // вознаграждение за заказ рассчитывается
+	StatusInvalid    TaskStatus = "INVALID"    // система расчёта вознаграждений отказала в расчёте
+	StatusProcessed  TaskStatus = "PROCESSED"  // данные по заказу проверены и информация о расчёте успешно получена.
 )
 
 type AccrualPostgres struct {
@@ -26,12 +26,13 @@ func NewAccrualPostgres(db *sqlx.DB) *AccrualPostgres {
 
 // Метод GetUnprocessedOrders - «глаза» вашего воркера.
 // Он лезет в БД и ищет заказы, по которым мы еще не получили финальный ответ от системы лояльности.
-// Логика: Выбираем все заказы, у которых статус NEW (только что создан),
-// REGISTERED (принят системой начислений) или PROCESSING (в процессе расчета).
+// Логика: Выбираем все заказы, у которых статус
+// NEW (только что создан) или PROCESSING (в процессе расчета).
 // Результат: Список строк (номеров заказов), которые воркер должен «прогнать» через HTTP-запрос к accrual.
 func (r *AccrualPostgres) GetUnprocessedOrders(ctx context.Context) ([]string, error) {
 	var orders []string
 
+	// Запрос выбирает номера заказов, которые еще не (NOT IN) в финальном статусе
 	// Используем константы для фильтрации
 	query := fmt.Sprintf(
 		"SELECT order_number FROM %s WHERE status NOT IN ($1, $2)",

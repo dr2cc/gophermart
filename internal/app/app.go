@@ -77,8 +77,8 @@ func Run(cfg *config.Config) error {
 
 	// 5. Сборка зависимостей (Dependency Injection)
 	// Инициализируем цепочку Репозиторий -> Сервис -> Хендлер
-	repository := repository.NewRepository(db)
-	services := service.NewService(repository)
+	repo := repository.NewRepository(db)
+	services := service.NewService(repo)
 	handlers := handler.NewHandler(services)
 
 	// 6. Подготовка контекста для завершения работы
@@ -91,8 +91,8 @@ func Run(cfg *config.Config) error {
 	// Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
 	//
 	// Инициализируем клиент accrual и запускаем фоновый процессор
-	accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	processor.Run(ctx, repository.OrderStore, accrualClient, log)
+	accrualClient := accrual.NewClient(cfg.AccrualAddress, log)
+	processor.Run(ctx, repo, accrualClient, log)
 
 	// 8. Запуск HTTP-сервера
 	srv := new(server.Server)

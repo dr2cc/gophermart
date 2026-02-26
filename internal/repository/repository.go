@@ -19,7 +19,7 @@ type Order interface {
 }
 
 // Функционал работы accrual с db
-type OrderStore interface {
+type AccrualStorage interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
 	// UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
 	UpdateOrderStatus(ctx context.Context, orderID string, status TaskStatus, accrual *float64) error
@@ -32,15 +32,15 @@ type Loyalty interface {
 type Repository struct {
 	Authorization
 	Order
-	OrderStore
+	AccrualStorage
 	Loyalty
 }
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{
-		Authorization: NewAuthPostgres(db),
-		Order:         NewOrderPostgres(db),
-		OrderStore:    NewAccrualPostgres(db),
+		Authorization:  NewAuthPostgres(db),
+		Order:          NewOrderPostgres(db),
+		AccrualStorage: NewAccrualPostgres(db),
 		// Loyalty: ,
 	}
 }
