@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"gophermart/internal/accrual/dto"
-	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,7 +17,12 @@ type Client struct {
 }
 
 // Call from app
-func NewClient(address string, log *slog.Logger) *Client {
+func NewClient(address string) *Client {
+	// ❌ Если адрес не начинается с http, добавляем его сами
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		address = "http://" + address
+	}
+	//
 	return &Client{
 		Address: address,
 		HTTPClient: &http.Client{
@@ -27,7 +32,6 @@ func NewClient(address string, log *slog.Logger) *Client {
 }
 
 func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderResponse, time.Duration, error) {
-	// Паттерн operation name.
 	const op = "accrual.GetAccrual"
 
 	// Без защиты "от дурака" HTTPClient (*http.Client) в Go не понимает,

@@ -91,7 +91,7 @@ func Run(cfg *config.Config) error {
 	// Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
 	//
 	// Инициализируем клиент accrual и запускаем фоновый процессор
-	accrualClient := accrual.NewClient(cfg.AccrualAddress, log)
+	accrualClient := accrual.NewClient(cfg.AccrualAddress)
 	processor.Run(ctx, repo, accrualClient, log)
 
 	// 8. Запуск HTTP-сервера

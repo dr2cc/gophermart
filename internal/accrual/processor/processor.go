@@ -41,6 +41,7 @@ func Run(ctx context.Context, repo AccrualStorage, client *accrual.Client, log *
 }
 
 func processOrders(ctx context.Context, repo AccrualStorage, client *accrual.Client, log *slog.Logger) {
+	// Pattern operation name
 	const op = "processor.processOrders"
 
 	log = log.With(
