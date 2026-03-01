@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"gophermart/db/migrations" // импорт вашего пакета с FS
 	"gophermart/internal/accrual"
-	"gophermart/internal/accrual/processor"
+	worker "gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
 	"gophermart/internal/handler"
 	"gophermart/internal/repository"
@@ -32,20 +32,21 @@ const (
 
 // "Точка сборки" (композитор) приложения.
 func Run(cfg *config.Config) error {
+	// 1. Создаем logger
 	log := setupLogger(cfg.Env)
 	log.Info("Init server", slog.String("address", cfg.ServerAddress))
 
-	// 1. Инициализация подключения к БД
+	// 2. Инициализация подключения к БД
 	// Используем кастомный конструктор для настройки пула соединений Postgres
 	db, err := repository.NewPostgresDB(cfg.DatabaseDSN)
 	if err != nil {
-		// эти две строки- примерный аналог log.Fatal(err) для slog
+		// эти две строки- примерный аналог для slog log.Fatal(err)
 		log.Error("failed to connect to db", "err", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	// 2. Настройка системы миграций Goose
+	// 3. Настройка системы миграций Goose
 	// Используем встроенную файловую систему (go:embed) для работы с SQL-файлами
 	goose.SetBaseFS(migrations.FS) // migrations.FS — переменная с go:embed
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -54,7 +55,7 @@ func Run(cfg *config.Config) error {
 	}
 	log.Info("Applying migrations...")
 
-	// 3. Режим очистки БД (Drop/Reset, запуск с флагом -drop)
+	// 4. Режим очистки БД (Drop/Reset, запуск с флагом -drop)
 	// Если передан флаг очистки, откатываем все миграции перед стартом
 	if cfg.DropDB {
 		log.Info("Cleaning up the database...")
@@ -66,7 +67,7 @@ func Run(cfg *config.Config) error {
 		log.Info("DB IS CLEAN.")
 	}
 
-	// 4. Применение актуальных миграций
+	// 5. Применение актуальных миграций
 	// Приводим схему БД к актуальному состоянию (команда Up)
 	if err := goose.Up(db.DB, "."); err != nil {
 		// Логируем ошибку миграции
@@ -75,26 +76,26 @@ func Run(cfg *config.Config) error {
 	}
 	log.Info("Database is up to date!")
 
-	// 5. Сборка зависимостей (Dependency Injection)
+	// 6. Сборка зависимостей (Dependency Injection)
 	// Инициализируем цепочку Репозиторий -> Сервис -> Хендлер
 	repo := repository.NewRepository(db)
 	services := service.NewService(repo)
 	handlers := handler.NewHandler(services)
 
-	// 6. Подготовка контекста для завершения работы
-	// Слушаем сигналы ОС (Ctrl+C, SIGTERM) для корректной остановки
-	// Создаем корневой контекст, который отменится при сигналах завершения
+	// 7. Создаем корневой контекст, который отменится при сигналах завершения.
+	// Слушаем сигналы ОС (SIGINT(Ctrl+C), SIGTERM, порядок перечисления НЕ ВАЖЕН) для корректной остановки. SIGTERM (Signal Terminate): стандартный сигнал для завершения процесса.
+	// Его используют Docker, Kubernetes и системные менеджеры (типа systemd), когда производят Graceful Shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// 7. Запуск фоновых процессов.
-	// Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
-	//
-	// Инициализируем клиент accrual и запускаем фоновый процессор
-	accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	processor.Run(ctx, repo, accrualClient, log)
+	// 8. Запуск фоновых процессов. Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
 
-	// 8. Запуск HTTP-сервера
+	// - Инициализируем клиент accrual
+	accrualClient := accrual.NewClient(cfg.AccrualAddress)
+	// -  Запускаем фоновый процесс
+	worker.Run(ctx, repo, accrualClient, log)
+
+	// 9. Запуск HTTP-сервера
 	srv := new(server.Server)
 	serverErrors := make(chan error, 1)
 
@@ -109,7 +110,7 @@ func Run(cfg *config.Config) error {
 		}
 	}()
 
-	// 9. Ожидание событий завершения (блокировка основной горутины)
+	// 10. Ожидание событий завершения (блокировка основной горутины)
 	select {
 	case err := <-serverErrors:
 		return err // Если сервер сам упал
