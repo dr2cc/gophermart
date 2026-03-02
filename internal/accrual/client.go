@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gophermart/internal/accrual/dto"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,7 +30,7 @@ func NewClient(address string) *Client {
 	}
 }
 
-func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderResponse, time.Duration, error) {
+func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*OrderResponse, time.Duration, error) {
 	const op = "accrual.GetAccrual"
 
 	// Без защиты "от дурака" HTTPClient (*http.Client) в Go не понимает,
@@ -56,12 +55,12 @@ func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderRes
 	// 429
 	if resp.StatusCode == http.StatusTooManyRequests {
 		retryAfter, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
-		return nil, time.Duration(retryAfter) * time.Second, dto.ErrTooManyRequests
+		return nil, time.Duration(retryAfter) * time.Second, ErrTooManyRequests
 	}
 
 	// 204
 	if resp.StatusCode == http.StatusNoContent {
-		return nil, 0, dto.ErrOrderNotRegistered
+		return nil, 0, ErrOrderNotRegistered
 	}
 
 	// 200
@@ -70,7 +69,7 @@ func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*dto.OrderRes
 	}
 
 	// Мапим респонс на наш dto
-	var result dto.OrderResponse
+	var result OrderResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, 0, fmt.Errorf("called %s from %s: %w", "NewDecoder", op, err)
 	}

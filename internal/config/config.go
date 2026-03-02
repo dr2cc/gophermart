@@ -2,86 +2,40 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	Env            string `yaml:"env" env-default:"local"`
-	ServerAddress  string `json:"server_address"`
-	AccrualAddress string `json:"base_url"`
-	DatabaseDSN    string `json:"database_dsn"`
-	ConfigPath     string
+	Env            string `env:"ENV" env-default:"local"`
+	ServerAddress  string `env:"RUN_ADDRESS" env-default:":8080"`
+	AccrualAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" env-default:"localhost:8090"`
+	DatabaseDSN    string `env:"DATABASE_URI"`
+	PollInterval   int    `env:"POLL_INTERVAL" env-default:"3"`
 	DropDB         bool
 }
 
 func NewConfig() (*Config, error) {
-	cfg := &Config{
-		Env:            "local", // Окружение - local, dev или prod,в первую очередь для логгера
-		ServerAddress:  "",
-		AccrualAddress: "",
-		DatabaseDSN:    "",
-		ConfigPath:     "",
-		DropDB:         false,
-	}
 
-	flag.StringVar(&cfg.ServerAddress, "a", "", "host to listen on")
-	flag.StringVar(&cfg.AccrualAddress, "r", "", "accrual is listening on")
-	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn for connecting to postgres")
-	flag.StringVar(&cfg.ConfigPath, "c", "", "config path")
+	var cfg Config
+
+	// 1. Загружаем переменные окружения и дефолты
+	// Если ENV нет, подставятся значения из env-default
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to read env: %w", err)
+	}
+	// 2. Настраиваем флаги.
+	// В качестве дефолтов передаем уже заполненные значения из cfg (там сейчас ENV или дефолты)
+	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "host to listen on")
+	flag.StringVar(&cfg.AccrualAddress, "r", cfg.AccrualAddress, "accrual is listening on")
+	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "database dsn")
 	flag.BoolVar(&cfg.DropDB, "drop", false, "drop db tables")
 
+	// 3. Парсим флаги.
+	// Если пользователь ввел флаг, он перезапишет значение из ENV.
 	flag.Parse()
 
-	configFromFile, err := cfg.parseConfigFile(cfg.ConfigPath)
-	if err != nil {
-		return &Config{}, err
-	}
-
-	// Считываем конфигурацию в такой последовательности:
-	// - из флагов командной строки, - переменных окружения, - файла конфигурации, - значение по умолчанию
-	cfg.ServerAddress = priorityLine(cfg.ServerAddress, os.Getenv("RUN_ADDRESS"), configFromFile.ServerAddress, ":8080")
-	cfg.AccrualAddress = priorityLine(cfg.AccrualAddress, os.Getenv("ACCRUAL_SYSTEM_ADDRESS"), configFromFile.AccrualAddress, "localhost:8082")
-	cfg.DatabaseDSN = priorityLine(cfg.DatabaseDSN, os.Getenv("DATABASE_URI"), configFromFile.DatabaseDSN)
-
-	return cfg, nil
-}
-
-func priorityLine(strings ...string) string {
-	for _, str := range strings {
-		if str != "" {
-			return str
-		}
-	}
-	return ""
-}
-
-// func priorityBool(bools ...bool) bool {
-// 	for _, boolVar := range bools {
-// 		if boolVar {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
-func (c *Config) parseConfigFile(configPath string) (Config, error) {
-	if configPath == "" {
-		return Config{}, nil
-	}
-
-	f, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Config{}, fmt.Errorf("config file not found at: %s", configPath)
-		}
-		return Config{}, err
-	}
-
-	configFromFile := Config{}
-
-	err = json.Unmarshal(f, &configFromFile)
-	return configFromFile, err
+	return &cfg, nil
 }

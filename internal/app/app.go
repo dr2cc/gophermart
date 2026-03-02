@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"gophermart/db/migrations" // импорт вашего пакета с FS
 	"gophermart/internal/accrual"
-	worker "gophermart/internal/accrual/processor"
 	"gophermart/internal/config"
 	"gophermart/internal/handler"
 	"gophermart/internal/repository"
@@ -89,11 +88,10 @@ func Run(cfg *config.Config) error {
 	defer stop()
 
 	// 8. Запуск фоновых процессов. Инициализируем внешние клиенты и запускаем воркеры в неблокирующем режиме.
-
-	// - Инициализируем клиент accrual
-	accrualClient := accrual.NewClient(cfg.AccrualAddress)
-	// -  Запускаем фоновый процесс
-	worker.Run(ctx, repo, accrualClient, log)
+	// 8.1 Процесс accrual
+	accrualClient := accrual.NewClient(cfg.AccrualAddress)                   // - Инициализируем зависимости (клиент accrual)
+	accrualWorker := accrual.New(repo, accrualClient, cfg.PollInterval, log) // - Создаем экземпляр воркера
+	accrualWorker.Run(ctx)                                                   // -  Запускаем фоновый процесс
 
 	// 9. Запуск HTTP-сервера
 	srv := new(server.Server)
