@@ -2,77 +2,69 @@ package accrual
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type Client struct {
-	Address    string
-	HTTPClient *http.Client
+	HTTPClient *resty.Client
 }
 
 // Call from app
 func NewClient(address string) *Client {
-	// ❌ Если адрес не начинается с http, добавляем его сами
+	address = strings.Trim(address, "/")
 	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
 		address = "http://" + address
 	}
-	//
+
 	return &Client{
-		Address: address,
-		HTTPClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
+		HTTPClient: resty.New().
+			SetTimeout(time.Duration(5) * time.Second).
+			SetBaseURL(address),
 	}
 }
 
 func (c *Client) GetAccrual(ctx context.Context, orderNum string) (*OrderResponse, time.Duration, error) {
 	const op = "accrual.GetAccrual"
 
-	// Без защиты "от дурака" HTTPClient (*http.Client) в Go не понимает,
-	// как обращаться к адресу, если в начале не указан протокол.
-	// Желательный формат ACCRUAL_SYSTEM_ADDRESS
-	// export ACCRUAL_SYSTEM_ADDRESS=http://localhost:8090
-	url := fmt.Sprintf("%s/api/orders/%s", c.Address, orderNum)
-
-	// Создаем http-запрос к серверу accrual
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	// Выполнение запроса (Do)
-	// Как работает: в этот момент Go открывает TCP-соединение, отправляет HTTP-заголовки и ждет ответа.
-	// Используется клиент HTTPClient (*http.Client), созданный в NewClient.
-	// У него есть свой тайм-аут (здесь 5 секунд), который подстрахует, если контекст ctx вдруг окажется бесконечным.
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("called %s from %s: %w", "HTTPClient", op, err)
-	}
-	defer resp.Body.Close()
-
-	// Обрабатываем ошибки
-	// 429
-	if resp.StatusCode == http.StatusTooManyRequests {
-		retryAfter, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
-		return nil, time.Duration(retryAfter) * time.Second, ErrTooManyRequests
-	}
-
-	// 204
-	if resp.StatusCode == http.StatusNoContent {
-		return nil, 0, ErrOrderNotRegistered
-	}
-
-	// 200
-	if resp.StatusCode != http.StatusOK {
-		return nil, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
 	// Мапим респонс на наш dto
 	var result OrderResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, 0, fmt.Errorf("called %s from %s: %w", "NewDecoder", op, err)
+
+	// Выполнение запроса (метод resty R() создает новый экземпляр запроса) к серверу accrual
+	// Как работает: в этот момент Go открывает TCP-соединение, отправляет HTTP-заголовки и ждет ответа.
+	// Используется клиент HTTPClient (*resty.Client), созданный в NewClient.
+	// У него есть свой тайм-аут (здесь 5 секунд), который подстрахует, если контекст ctx вдруг окажется бесконечным.
+	resp, err := c.HTTPClient.R().
+		SetContext(ctx).
+		SetResult(&result). // Resty сам сделает json.Unmarshal в result, если статус 2xx
+		Get("/api/orders/" + orderNum)
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: request failed: %w", op, err)
 	}
 
-	return &result, 0, nil
+	// Обрабатываем ошибки
+	switch resp.StatusCode() {
+	case http.StatusOK: // 200
+		return &result, 0, nil
+
+	case http.StatusTooManyRequests: // 429
+		// У Resty удобный метод Header().Get()
+		seconds, _ := strconv.Atoi(resp.Header().Get("Retry-After"))
+		if seconds == 0 {
+			seconds = 1 // Дефолтная пауза, если заголовок пустой
+		}
+		return nil, time.Duration(seconds) * time.Second, ErrTooManyRequests
+
+	case http.StatusNoContent: //204
+		return nil, 0, ErrOrderNotRegistered
+
+	default:
+		return nil, 0, fmt.Errorf("%s: unexpected status code: %d", op, resp.StatusCode())
+	}
 }

@@ -1,3 +1,6 @@
+SHELL := /bin/bash
+SECRET_PASS := 1234
+
 include .env
 export
 
@@ -20,7 +23,15 @@ help: ## display this help screen
 .PHONY: help
 
 drop: ## сбросить БД и запустить приложение
-	go run ./cmd/gophermart/main.go -drop
+	@read -s -p "Enter password: " input_pass; \
+	echo; \
+	if [ "$$input_pass" = "$(SECRET_PASS)" ]; then \
+		echo "Access granted. Executing..."; \
+		go run ./cmd/gophermart/main.go -drop; \
+	else \
+		echo "Error: Incorrect password!"; \
+		exit 1; \
+	fi
 .PHONY: drop
 
 test: ## run tests
