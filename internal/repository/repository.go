@@ -14,14 +14,12 @@ type Authorization interface {
 
 // Сервис работы с заказами
 type Order interface {
-	// ТЕОРИЯ! Запись нового заказа в таблицу orders
 	RecordOrder(id int, n string) error
 }
 
 // Функционал работы accrual с db
 type AccrualStorage interface {
 	GetUnprocessedOrders(ctx context.Context) ([]string, error)
-	// UpdateOrderStatus(ctx context.Context, orderID string, status string, accrual *float64) error
 	UpdateOrderStatus(ctx context.Context, orderID string, status TaskStatus, accrual *float64) error
 }
 
