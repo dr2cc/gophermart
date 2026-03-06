@@ -17,7 +17,7 @@ import (
 // 3️⃣ Передаем данные в службу нашего приложения.
 // 4️⃣ Возвращаем клиенту response.
 
-func (h *handler) createOrder(c *gin.Context) {
+func (h *controller) createOrder(c *gin.Context) {
 	userId, err := getUserId(c)
 	// Content-Type: text/plain
 	// ```

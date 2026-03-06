@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"gophermart/internal/models"
+	"gophermart/internal/service"
 	mock_service "gophermart/internal/service/mocks"
 	"net/http/httptest"
 	"testing"
@@ -44,9 +45,12 @@ func TestHandler_signUp(t *testing.T) {
 	}
 
 	for _, test := range testTable {
+		// По сути повторяем здесь упрощенную только под задачи теста "точку сборки" Run.
 		t.Run(test.name, func(t *testing.T) {
-			// 1. Инициализация зависимостей.
-			// Инициализация моков (требование библиотеки- создавать контроллер
+
+			// 1. Сборка зависимостей: ctrl--> services--> handler
+			// Инициализация моков.
+			// Создаем "ложный" контроллер (требование библиотеки- создавать контроллер
 			// и "финишировать" его по выполнению теста)
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -55,18 +59,18 @@ func TestHandler_signUp(t *testing.T) {
 			// Передавая параметры (auth, test.inputUser) мы указываем, что
 			// ожидаем получить вызов метода сервиса, а в качестве аргумента inputUser models.User
 			test.mockBehavior(auth, test.inputUser)
-			// ❌Закончил на 7:43
-
-			// services := &service.Service{Authorization: auth}
-			// handler := Handler{services}
+			//Создаем объект сервисов, но передадим аргументом для интерфейса авторизации наш "ложный" auth.
+			services := &service.Service{Authorization: auth}
+			// Инициализируем хендлер
+			handler := controller{services}
 
 			// 2. Init Endpoint
 			r := gin.New()
-			//r.POST("/sign-up", handler.signUp)
+			r.POST("/register", handler.signUp)
 
 			// Create Request
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/sign-up",
+			req := httptest.NewRequest("POST", "/register",
 				//bytes.NewBufferString(test.inputBody) создает тело нашего запроса
 				//и реализует интерфейс io.Reader
 				bytes.NewBufferString(test.inputBody))
@@ -77,7 +81,6 @@ func TestHandler_signUp(t *testing.T) {
 			// Assert
 			assert.Equal(t, w.Code, test.expectedStatusCode)
 			assert.Equal(t, w.Body.String(), test.expectedResponseBody)
-
 		})
 	}
 }

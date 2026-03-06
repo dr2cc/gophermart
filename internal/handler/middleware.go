@@ -14,7 +14,7 @@ const (
 )
 
 // Все ошибки должны быть `401` — StatusUnauthorized
-func (h *handler) userIdentity(c *gin.Context) {
+func (h *controller) userIdentity(c *gin.Context) {
 	// Получаем хедер авторизации
 	header := c.GetHeader(authorizationHeader)
 	// Он не должен быть пустой

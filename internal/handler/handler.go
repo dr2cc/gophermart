@@ -14,24 +14,24 @@ import (
 // 3️⃣ Передаем данные в службу нашего приложения.
 // 4️⃣ Возвращаем клиенту response.
 
-// handler
+// controller
 // - В качестве методов будет иметь
 // все обработчики и инициализатор роутера.
-// - В качестве зависимости Handler имеет
+// - В качестве зависимости controller имеет
 // указатель на структуру сервисов.
-type handler struct {
+type controller struct {
 	// Зависимость хендлера- указатель на структуру Service.
 	// А сама структура Service состоит из интерфейсов наших сервисов!
 	services *service.Service
 }
 
 // Called from app
-func NewHandler(services *service.Service) *handler {
-	return &handler{services: services}
+func NewHandler(services *service.Service) *controller {
+	return &controller{services: services}
 }
 
 // Called from app
-func (h *handler) InitRoutes() *gin.Engine {
+func (h *controller) InitRoutes() *gin.Engine {
 	router := gin.New()
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
