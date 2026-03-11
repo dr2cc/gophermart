@@ -15,14 +15,14 @@ const (
 
 // Все ошибки должны быть `401` — StatusUnauthorized
 func (h *controller) userIdentity(c *gin.Context) {
-	// Получаем хедер авторизации
+	// 1️⃣ Extract: получаем хедер авторизации
 	header := c.GetHeader(authorizationHeader)
 	// Он не должен быть пустой
 	if header == "" {
 		newErrorResponse(c, http.StatusUnauthorized, "empty auth header")
 		return
 	}
-	// Делим строку хедера по пробелам.
+	// 2️⃣ Parse & Validate: делим строку хедера по пробелам.
 	// Корректный возврат- строковый массив длиной в два элемента.
 	headerParts := strings.Split(header, " ")
 	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
@@ -40,7 +40,7 @@ func (h *controller) userIdentity(c *gin.Context) {
 		newErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
-
+	// 3️⃣ Set Context: если всё ок, кладем userId в контекст Gin
 	c.Set(userCtx, userId)
 }
 
