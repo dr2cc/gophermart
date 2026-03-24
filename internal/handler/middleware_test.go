@@ -29,11 +29,11 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			// ожидания от мока
+			// ожидания от мока:
 			mockBehavior: func(s *mock_service.MockAuthorization, token string) {
 				// У объекта мока s вызываем метод EXPECT (s.EXPECT()) = создаем поведение для s
 				// Через . указываем, что ожидаем получить вызов ParseToken(token)
-				// Через следующую . пишем ожидание того, что вызов ParseToken вернет ID 1 и nil (ошибка)
+				// Через следующую . пишем то, что вызов ParseToken должен вернуть (ID 1 и ошибку nil)
 				s.EXPECT().ParseToken(token).Return(1, nil)
 			},
 			expectedStatusCode:   200,
@@ -44,7 +44,7 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:           "",
 			headerValue:          "Bearer token",
 			token:                "token",
-			mockBehavior:         func(r *mock_service.MockAuthorization, token string) {},
+			mockBehavior:         func(s *mock_service.MockAuthorization, token string) {},
 			expectedStatusCode:   401,
 			expectedResponseBody: `{"message":"empty auth header"}`,
 		},
@@ -53,7 +53,7 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:           "Authorization",
 			headerValue:          "Bearr token",
 			token:                "token",
-			mockBehavior:         func(r *mock_service.MockAuthorization, token string) {},
+			mockBehavior:         func(s *mock_service.MockAuthorization, token string) {},
 			expectedStatusCode:   401,
 			expectedResponseBody: `{"message":"invalid auth header"}`,
 		},
@@ -62,7 +62,7 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:           "Authorization",
 			headerValue:          "Bearer ",
 			token:                "token",
-			mockBehavior:         func(r *mock_service.MockAuthorization, token string) {},
+			mockBehavior:         func(s *mock_service.MockAuthorization, token string) {},
 			expectedStatusCode:   401,
 			expectedResponseBody: `{"message":"token is empty"}`,
 		},
@@ -71,8 +71,11 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			mockBehavior: func(r *mock_service.MockAuthorization, token string) {
-				r.EXPECT().ParseToken(token).Return(0, errors.New("invalid token"))
+			mockBehavior: func(s *mock_service.MockAuthorization, token string) {
+				// У объекта мока s вызываем метод EXPECT (s.EXPECT()) = создаем поведение для s
+				// Через . указываем, что ожидаем получить вызов ParseToken(token)
+				// Через следующую . пишем то, что вызов ParseToken должен вернуть (ID 0 и ошибку "invalid token")
+				s.EXPECT().ParseToken(token).Return(0, errors.New("invalid token"))
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: `{"message":"invalid token"}`,
@@ -80,7 +83,7 @@ func TestController_userIdentity(t *testing.T) {
 	}
 
 	for _, test := range testTable {
-		// По сути повторяем здесь упрощенную (только под задачи теста) "точку сборки" Run.
+		// По сути повторяем здесь упрощенную (только под задачи теста) "точку сборки" app.Run()
 		t.Run(test.name, func(t *testing.T) {
 			// 1. Сборка зависимостей: ctrl--> services--> handler
 			// Инициализация моков.

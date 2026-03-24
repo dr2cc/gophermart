@@ -29,7 +29,7 @@ const (
 	envProd  = "prod"
 )
 
-// "Точка сборки" (композитор) приложения.
+// "Точка сборки" (оркестратор) приложения.
 func Run(cfg *config.Config) error {
 	// 1. Создаем logger
 	log := setupLogger(cfg.Env)

@@ -73,7 +73,7 @@ func TestHandler_signUp(t *testing.T) {
 	}
 
 	for _, test := range testTable {
-		// По сути повторяем здесь упрощенную (только под задачи теста) "точку сборки" Run.
+		// По сути повторяем здесь упрощенную (только под задачи теста) "точку сборки" app.Run()
 		t.Run(test.name, func(t *testing.T) {
 			// 1. Сборка зависимостей: ctrl--> services--> handler
 			// Инициализация моков.
