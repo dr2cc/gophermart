@@ -29,7 +29,7 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			// ожидания от мока:
+			// поведение мока:
 			mockBehavior: func(s *mock_service.MockAuthorization, token string) {
 				// У объекта мока s вызываем метод EXPECT (s.EXPECT()) = создаем поведение для s
 				// Через . указываем, что ожидаем получить вызов ParseToken(token)
