@@ -15,16 +15,16 @@ import (
 )
 
 func TestHandler_signUp(t *testing.T) {
-	// ❗mockBehavior , тип-функция (function type), настройщик поведения мока.
-	// Callback-функция — так как эта логика передается внутрь теста, чтобы она «выстрелила» в нужный момент (инъекция поведения).
-	// В данном случае принимает объект (структуру) мока сервиса аутентификации и "модель" (структуру) пользователя.
+	// ❗mockBehavior (♊имитация поведения), тип-функция (function type), настройщик поведения мока.
+	// Callback-функция — так как эта логика передается внутрь теста, чтобы сработать в нужный момент (инъекция поведения).
+	// В данном случае принимает объект (структуру) ♊имитатора сервиса аутентификации и "модель" (структуру) пользователя.
 	type mockBehavior func(s *mock_service.MockAuthorization, user models.User)
 
 	testTable := []struct {
 		name                 string
 		inputBody            string
 		inputUser            models.User
-		mockBehavior         mockBehavior // поведение мока
+		mockBehavior         mockBehavior // ♊имитация поведения
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
@@ -35,19 +35,19 @@ func TestHandler_signUp(t *testing.T) {
 				Login:    "username",
 				Password: "qwerty",
 			},
-			// Функция-настройщик (setup function). Она настраивает мок перед запуском основной логики, используя поле recorder из MockAuthorization struct
+			// Функция-настройщик (setup function). Она настраивает ♊имитатор перед запуском основной логики, используя поле recorder из MockAuthorization struct
 			// Аргументы функции:
-			//	s *mock_service.MockAuthorization:	сам мок, который нужно «обучить».
+			//	s *mock_service.MockAuthorization:	♊имитатор, который нужно «обучить».
 			//	user models.User:					данные, которые планируется передать в тест.
 			mockBehavior: func(s *mock_service.MockAuthorization, user models.User) {
-				// У объекта мока s вызываем метод EXPECT (создаем поведение для s)
+				// У объекта ♊имитатора s вызываем метод EXPECT (создаем поведение для s)
 				// s.EXPECT() активирует режим записи (recorder *MockAuthorizationMockRecorder — указатель на "записывающий" объект,
 				// который предоставляет методы для настройки ожидаемых вызовов (EXPECT().MethodName(arg).Return(value))
-				// Сообщаем моку: «Сейчас я опишу вызов, который должен произойти во время работы программы».
-				s.EXPECT().
-					CreateUser(user). // Указывает, какой именно метод мы ждем и с какими аргументами
-					Return(1, nil).   // Определяет результат, который метод вернет тестируемому коду.
-					// В данном случае, как только программа вызовет метод CreateUser, мок мгновенно отдаст еи 1 (ID пользователя) и nil (отсутствие ошибки).
+				// Сообщаем ♊имитатору: «Сейчас я опишу вызов, который должен произойти во время работы программы».
+				s.EXPECT(). // (здесь) при обращении к объекту s мы будем ОЖИДАТЬ()
+						CreateUser(user). // Указывает, какой именно метод мы ждем и с какими аргументами
+						Return(1, nil).   // Определяет результат, который метод вернет тестируемому коду.
+					// В данном случае, как только программа вызовет метод CreateUser, ♊имитатор мгновенно отдаст ей 1 (ID пользователя) и nil (отсутствие ошибки).
 					// Это позволяет тестировать логику дальше, не обращаясь к реальной базе данных.
 					Times(1) // (не обязательно) - сколько раз вызываем (по умолчанию 1)
 			},
@@ -70,7 +70,7 @@ func TestHandler_signUp(t *testing.T) {
 				Login:    "username",
 				Password: "qwerty",
 			},
-			// ожидания от мока
+			// ожидания от ♊имитатора
 			mockBehavior: func(s *mock_service.MockAuthorization, user models.User) {
 				// Тело функции.
 				// ожидание того, что вызов CreateUser вернет ID 1 и errors.New("service failure")

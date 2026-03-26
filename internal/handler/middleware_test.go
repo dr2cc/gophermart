@@ -13,6 +13,7 @@ import (
 )
 
 func TestController_userIdentity(t *testing.T) {
+	// Объявляем ♊имитацию поведения
 	type mockBehavior func(s *mock_service.MockAuthorization, token string)
 
 	testTable := []struct {
@@ -29,12 +30,16 @@ func TestController_userIdentity(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			// поведение мока:
+			// ♊ имитация поведения:
 			mockBehavior: func(s *mock_service.MockAuthorization, token string) {
-				// У объекта мока s вызываем метод EXPECT (s.EXPECT()) = создаем поведение для s
-				// Через . указываем, что ожидаем получить вызов ParseToken(token)
-				// Через следующую . пишем то, что вызов ParseToken должен вернуть (ID 1 и ошибку nil)
-				s.EXPECT().ParseToken(token).Return(1, nil)
+				// 1️⃣ При обращении к объекту s мы будем ОЖИДАТЬ()
+				s.EXPECT().
+					// 2️⃣ что вызов метода ParseToken(token)
+					ParseToken(token). // это метод (структуры MockOrderMockRecorder) "притворяющийся" методом ParseToken(accessToken string) структуры authService, реализующей интерфейс service.Authorization
+					// 3️⃣ Вернет() тестируемому коду 1 (ID пользователя) и nil (отсутствие ошибки).
+					Return(1, nil)
+				// В данном случае, как только программа вызовет метод ParseToken, ♊имитатор мгновенно отдаст ей 1 (ID пользователя) и nil (отсутствие ошибки).
+				// Так логика продолжит тестирование, не обращаясь к реальной базе данных.
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "1",
@@ -72,9 +77,6 @@ func TestController_userIdentity(t *testing.T) {
 			headerValue: "Bearer token",
 			token:       "token",
 			mockBehavior: func(s *mock_service.MockAuthorization, token string) {
-				// У объекта мока s вызываем метод EXPECT (s.EXPECT()) = создаем поведение для s
-				// Через . указываем, что ожидаем получить вызов ParseToken(token)
-				// Через следующую . пишем то, что вызов ParseToken должен вернуть (ID 0 и ошибку "invalid token")
 				s.EXPECT().ParseToken(token).Return(0, errors.New("invalid token"))
 			},
 			expectedStatusCode:   401,
@@ -86,10 +88,10 @@ func TestController_userIdentity(t *testing.T) {
 		// По сути повторяем здесь упрощенную (только под задачи теста) "точку сборки" app.Run()
 		t.Run(test.name, func(t *testing.T) {
 			// 1. Сборка зависимостей: ctrl--> services--> handler
-			// Инициализация моков.
-			// Создаем "ложный" контроллер
+			// Инициализация ♊имитаций (initializing mocks).
+			// Создаем ♊1️⃣имитацию контроллера
 			ctrl := gomock.NewController(t)
-			// Создаем "ложный" сервис, который "притворяется" реальной бизнес-логикой (интерфейсом Authorization).
+			// Создаем ♊2️⃣имитацию сервиса, который "притворяется" реальной бизнес-логикой (интерфейсом Authorization).
 			auth := mock_service.NewMockAuthorization(ctrl)
 			// Передавая параметры (auth, test.inputUser) мы указываем, что
 			// ожидаем получить вызов метода сервиса, а в качестве аргумента token
