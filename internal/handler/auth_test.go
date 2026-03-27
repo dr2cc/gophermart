@@ -82,10 +82,9 @@ func TestHandler_signUp(t *testing.T) {
 	}
 
 	for _, test := range testTable {
-		// .Run() - по сути повторяем здесь упрощенную (только под задачи теста) "точку сборки"
 		t.Run(test.name, func(t *testing.T) {
-			// 1. Сборка зависимостей: ctrl--> services--> handler
-			// Инициализация моков. Создаем "ложный" контроллер
+			// ❗❗ Наиболее правильное описание в handler\middleware_test.go
+			// Инициализация моков.
 			ctrl := gomock.NewController(t)
 			// Создаем "ложный" сервис, который "притворяется" реальной бизнес-логикой (интерфейсом Authorization).
 			auth := mock_service.NewMockAuthorization(ctrl)
